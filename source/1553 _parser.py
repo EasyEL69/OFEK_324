@@ -3,8 +3,6 @@ OUTPUT_FILE_NAME = 'EXTEND.json'
 
 "importing all modules"
 try:
-    import Py106.MsgDecode1553
-    import ctypes
     import sys
     import Py106.packet as packet
     import Py106.status as status
