@@ -10,6 +10,8 @@ BINARY_FILE = 'testing.bin'
 
 class Writer:
 # ''' ---------------------------------------------------------------------------------------------------------'''
+
+    # ''' --------------------------------------------------------------------------------------'''
     # Constants for dictionary keys
     HEADER_MSG = 'HEADER_MSG'
     BODY_MSG = 'BODY_MSG'
@@ -17,12 +19,19 @@ class Writer:
     # setting format bytes
     HEADER_MSG_FORMAT = ">B2HQ2LB"
 
+    # ''' --------------------------------------------------------------------------------------'''
+
+
+    # ''' --------------------------------------------------------------------------------------'''
+    # generic methodes for class
     @staticmethod
     def convert_hex_array(values: list[str]) -> list[int]:
         # function will return a decimal values list
         for i, value in enumerate(values):
             values[i] = int(value, 16)
         return values
+    # ''' --------------------------------------------------------------------------------------'''
+
 
     # ''' --------------------------------------------------------------------------------------'''
     # Header message functions
@@ -39,7 +48,7 @@ class Writer:
 
     @staticmethod
     # TODO: future values requires (px status and 1553 flags) and MSG ERRORS treatment
-    
+
     def content_bytes(record) -> tuple[bytes, str]:
         content_dict = record[Writer.BODY_MSG]
 
@@ -70,7 +79,10 @@ class Writer:
         with open(BINARY_FILE, "ab") as output:
             # TODO: check if file position pointer in the correct place
             output.write(content_data_bytes)        
+            
+    # ''' --------------------------------------------------------------------------------------'''
 # ''' ---------------------------------------------------------------------------------------------------------'''
+
 
 def main():
     with open(c.OUTPUT_FILE_PATH, "rb") as f:
