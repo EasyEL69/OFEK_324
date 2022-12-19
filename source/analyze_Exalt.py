@@ -25,10 +25,21 @@ class Writer:
         return values
 
     # ''' --------------------------------------------------------------------------------------'''
+    # Header message functions
+    @staticmethod
+    def header_bytes(record) -> bytes:
+        return s.pack(Writer.HEADER_MSG_FORMAT, *Writer.convert_hex_array(
+            [value for _, value in record[Writer.HEADER_MSG].items()]))
+
+    # ''' --------------------------------------------------------------------------------------'''
+
+
+    # ''' --------------------------------------------------------------------------------------'''
     # Body message functions
 
     @staticmethod
     # TODO: future values requires (px status and 1553 flags) and MSG ERRORS treatment
+    
     def content_bytes(record) -> tuple[bytes, str]:
         content_dict = record[Writer.BODY_MSG]
 
@@ -58,18 +69,9 @@ class Writer:
 
         with open(BINARY_FILE, "ab") as output:
             # TODO: check if file position pointer in the correct place
-            output.write(content_data_bytes)
-
-    # ''' --------------------------------------------------------------------------------------'''
-    # Header message functions
-    @staticmethod
-    def header_bytes(record) -> bytes:
-        return s.pack(Writer.HEADER_MSG_FORMAT, *Writer.convert_hex_array(
-            [value for _, value in record[Writer.HEADER_MSG].items()]))
-
-    # ''' --------------------------------------------------------------------------------------'''
-
+            output.write(content_data_bytes)        
 # ''' ---------------------------------------------------------------------------------------------------------'''
+
 def main():
     with open(c.OUTPUT_FILE_PATH, "rb") as f:
         for record in stream.items(f, "item"):
