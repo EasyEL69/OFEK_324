@@ -1,8 +1,6 @@
-PATH = 'C:\\Users\\i7\\Desktop\\YUD_GIMEL\\testers files\\sample.c10'
-OUTPUT_FILE_NAME = 'EXTEND.json'
-
 "importing all modules"
 try:
+    from pathlib import Path
     import sys
     import Py106.packet as packet
     import Py106.status as status
@@ -12,6 +10,12 @@ try:
 except:
     print("ERROR IN IMPORTING")
     sys.exit(1)
+
+# creating a string of an absulute path to sample chapter 10 file
+C10_PATH = str(Path('files\\sample.c10'))
+
+# creating a string of absulute path to output file
+OUTPUT_FILE_PATH = str(Path('files\\parsed_1553.json'))
 
 
 def header_msg_dict(args):
@@ -122,8 +126,8 @@ def msg_1553(pkt_hdr, msg, decoder_1553):
 
 
 def create_output_file(pkt_io, decode1553):
-    # creating file
-    with open(OUTPUT_FILE_NAME, "at+") as f:
+
+    with open(OUTPUT_FILE_PATH, "at+") as f:
         # opening an array of messages
         f.write("[\n")
 
@@ -140,7 +144,7 @@ def create_output_file(pkt_io, decode1553):
         f.write("\n]")
 
     # now all we have to do is to delete the last ',' after the last message
-    with open(OUTPUT_FILE_NAME, "rb+") as f:
+    with open(OUTPUT_FILE_PATH, "rb+") as f:
         f.seek(-7, 2)
         f.write(bytes(" ".encode()))
 
@@ -157,9 +161,9 @@ def parse():
     decode1553 = Decode1553F1(pkt_io)
 
     # open chapter 10 file
-    open_status = pkt_io.open(PATH, packet.FileMode.READ)
+    open_status = pkt_io.open(C10_PATH, packet.FileMode.READ)
     if open_status != status.OK:
-        print("Error opening data file: %s" % PATH)
+        print("Error opening data file: %s" % C10_PATH)
         sys.exit(1)
     else:
         # file is good to go. analyzing part
