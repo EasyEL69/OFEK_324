@@ -1,13 +1,15 @@
 import struct as s
 import ijson as stream
+import constants as c
 
-PATH_FILE = 'C:\\Users\\user\\Desktop\\project_matirials\\EXTEND.json'
+
 NULL = '0'
 MSG_ERROR = [0]
 BINARY_FILE = 'testing.bin'
 
 
 class Writer:
+# ''' ---------------------------------------------------------------------------------------------------------'''
     # Constants for dictionary keys
     HEADER_MSG = 'HEADER_MSG'
     BODY_MSG = 'BODY_MSG'
@@ -27,7 +29,7 @@ class Writer:
 
     @staticmethod
     # TODO: future values requires (px status and 1553 flags) and MSG ERRORS treatment
-    def content_bytes(record) -> (bytes, str):
+    def content_bytes(record) -> tuple[bytes, str]:
         content_dict = record[Writer.BODY_MSG]
 
         content_bytes_format = '>5H{}HH'.format(len(content_dict['DATA_WORDS']))
@@ -65,28 +67,13 @@ class Writer:
         return s.pack(Writer.HEADER_MSG_FORMAT, *Writer.convert_hex_array(
             [value for _, value in record[Writer.HEADER_MSG].items()]))
 
-    @staticmethod
-    def write_header(record, file_pointer):
+    # ''' --------------------------------------------------------------------------------------'''
 
-        pass
-
-    @staticmethod
-    def write_header(record):
-        pass
-
-    @staticmethod
-    def write_header(record):
-        pass
-
-    @staticmethod
-    def write_header(record):
-        pass
-
-
+# ''' ---------------------------------------------------------------------------------------------------------'''
 def main():
-    with open('C:\\Users\\user\\Desktop\\project_matirials\\EXTEND.json', "rb") as f:
+    with open(c.OUTPUT_FILE_PATH, "rb") as f:
         for record in stream.items(f, "item"):
-            Writer.body_bytes(record)
+            print(Writer.content_bytes(record))
             # print([value for _, value in record['BODY_MSG'].items()])
 
 
