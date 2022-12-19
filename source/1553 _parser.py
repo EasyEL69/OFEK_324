@@ -18,7 +18,7 @@ C10_PATH = str(Path('files\\sample.c10'))
 OUTPUT_FILE_PATH = str(Path('files\\parsed_1553.json'))
 
 
-def header_msg_dict(args):
+def header_msg_dict(args) -> dict:
     return \
         {
             'MSG_STATUS': args[0],
@@ -31,7 +31,7 @@ def header_msg_dict(args):
         }
 
 
-def body_msg_dict(args):
+def body_msg_dict(args) -> dict:
     return \
         {
             'BUS_ID': args[0],
@@ -49,7 +49,7 @@ def body_msg_dict(args):
         }
 
 
-def header_1553_msg(pkt_hdr, msg):
+def header_1553_msg(pkt_hdr, msg) -> dict:
     # check if msg is fixed
     msg_sts = format(0x11, "02x") if msg.p1553Hdr.contents.Field.BlockStatus.MsgError == 0 else format(0x1, "02x")
 
@@ -70,7 +70,7 @@ def header_1553_msg(pkt_hdr, msg):
     return header_msg_dict([msg_sts, adapter_id, data_type, time_tagging, seq_num, data_len, msg_header_flags])
 
 
-def body_1553_msg(msg, decoder_1553):
+def body_1553_msg(msg, decoder_1553) -> dict:
     # busID A -> 0 or busID B -> 1
     bus_ID = 'B' if msg.p1553Hdr.contents.Field.BlockStatus.BusID == 1 else 'A'
 
@@ -116,7 +116,7 @@ def body_1553_msg(msg, decoder_1553):
                           cmd_word_2, status_word_2, word_count, data_words])
 
 
-def msg_1553(pkt_hdr, msg, decoder_1553):
+def msg_1553(pkt_hdr, msg, decoder_1553) -> dict:
     return \
         {
             'HEADER_MSG': header_1553_msg(pkt_hdr, msg),
@@ -125,7 +125,7 @@ def msg_1553(pkt_hdr, msg, decoder_1553):
         }
 
 
-def create_output_file(pkt_io, decode1553):
+def create_output_file(pkt_io, decode1553) -> None:
 
     with open(OUTPUT_FILE_PATH, "at+") as f:
         # opening an array of messages
@@ -149,7 +149,7 @@ def create_output_file(pkt_io, decode1553):
         f.write(bytes(" ".encode()))
 
 
-def parse():
+def parse() -> None:
     """ inspired by an open source code parsing
             Created on Jan 4, 2012
             by author: rb45
@@ -175,7 +175,7 @@ def parse():
         create_output_file(pkt_io, decode1553)
 
 
-def main():
+def main() -> None:
     parse()
 
 
