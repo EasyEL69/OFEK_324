@@ -1,4 +1,4 @@
-#TODO: import doesnot work, need to be fix!
+#TODO: import doesn't work, need to be fix!
 from source import writer
 
 def test():
