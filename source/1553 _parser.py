@@ -1,28 +1,103 @@
-"importing all modules"
-try:
-    from Py106.MsgDecode1553 import Decode1553F1
-    from Py106.time import Time
-    import Py106.packet as packet
-    import Py106.status as status
-    import json
-    import sys
-    import constants as c
-except:
-    print("ERROR IN IMPORTING")
-    sys.exit(1)
+from Py106.MsgDecode1553 import Decode1553F1
+from Py106.time import Time
+import Py106.packet as packet
+import Py106.status as status
+import json
+import constants as c
+import sys
 
 
-def header_msg_dict(args) -> dict:
-    return \
-        {
-            'MSG_STATUS': args[0],
-            'ADAPTER_ID': args[1],
-            'DATA_TYPE': args[2],
-            'TIME_TAG': args[3],
-            'SERIAL': args[4],
-            'DATA_LENGTH': args[5],
-            'HEADER_FLAGS': args[6]
-        }
+class Message:
+    def __init__(self, pkt_hdr: object, msg: object, decoder_1553: object) -> None:
+        self._msg_1553 = \
+            {
+                'HEADER_MSG': Message.get_1553_header(pkt_hdr, msg),
+
+                'BODY_MSG': body_1553_msg(msg, decoder_1553)
+            }
+
+    @staticmethod
+    def get_1553_header(pkt_hdr: object, msg: object) -> dict:
+        """
+        @param pkt_hdr: Packet object that contain parts of 1553 header message info
+        @param msg: part of the header of 1553 content can be found msg object (contain header and content)
+        @return: None. function set header info to a dict
+        """
+        return get_dict(
+            MSG_STATUS=c.FIX_STATUS if is_msg_fix(msg) else c.NOT_FIX_STATUS,
+            ADAPTER_ID=format(pkt_hdr.ch_id, "04x"),  # pass
+            DATA_TYPE=format(packet.DataType.MIL1553_FMT_1, "04x"),  # pass
+            TIME_TAG=format(msg.p1553Hdr.contents.Field.PktTime, "016x"),
+            SERIAL=format(pkt_hdr.seq_num, "08x"),
+            DATA_LENGTH=format(pkt_hdr.data_len, "08x"),
+            HEADER_FLAGS=format(pkt_hdr.packet_flags, "02x")
+        )
+
+    @staticmethod
+    def get_content(content: object, decoder_1553: object) -> dict:
+        """
+        @param content: object. contains all the 1553 msg in packet
+        @param decoder_1553: the tool to decode the info in packet
+        @return: None
+        """
+        bus_id = ord(65 + content.p1553Hdr.contents.Field.BlockStatus.BusID)
+
+        # getting info we need from command word
+        tr_1, sa_1 = Message.decode_cmd(content.pCmdWord1.contents.Field)
+        word_count = decoder_1553.word_cnt(content.pCmdWord1.contents.Value)
+
+        # checking transmit or receive mode
+        t_r = ("R", "T")
+        tr_or_rec = t_r[content.pCmdWord1.contents.Field.TR]
+
+        # getting hex value of command and status word
+        cmd_word_1 = format(content.pCmdWord1.contents.Value, "04x")
+        status_word_1 = format(content.pStatWord1.contents.Value, "04x")
+
+        # assuming that it's a transmit / receive message
+        tr_2 = None
+        sa_2 = None
+        cmd_word_2 = None
+        status_word_2 = None
+
+        # checking for rt2rt communicate messages
+        if content.p1553Hdr.contents.Field.BlockStatus.RT2RT != 0:
+            tr_2 = content.pCmdWord2.contents.Field.RTAddr
+            sa_2 = content.pCmdWord2.contents.Field.SubAddr
+            cmd_word_2 = format(content.pCmdWord2.contents.Value, "04x")
+            status_word_2 = format(content.pStatWord2.contents.Value, "04x")
+            tr_or_rec = "RT -> RT"
+
+        # init data words array
+        data_words = []
+
+        if content.p1553Hdr.contents.Field.BlockStatus.MsgError == 0:
+            for iDataIdx in range(word_count):
+                data_words.append(format(content.pData.contents[iDataIdx], "04x"))
+        else:
+            data_words.append('Msg Error')
+
+        # TODO: add additional 1553 flags
+
+    @staticmethod
+    def get_dict(**kwargs: object) -> dict:
+        """
+        @param args: json keys and values
+        @return: dict
+        """
+        return kwargs
+
+    @staticmethod
+    def is_msg_fix(msg: object) -> bool:
+        """
+        @param msg:
+        @return: Boolean. True if msg status is OK else False
+        """
+        return msg.p1553Hdr.contents.Field.BlockStatus.MsgError == 0
+
+    @staticmethod
+    def decode_cmd(contents):
+        return contents.Field.RTAddr, contents.Field.SubAddr
 
 
 def body_msg_dict(args) -> dict:
@@ -43,30 +118,37 @@ def body_msg_dict(args) -> dict:
         }
 
 
-def header_1553_msg(pkt_hdr, msg) -> dict:
-    # check if msg is fixed
-    msg_sts = format(0x11, "02x") if msg.p1553Hdr.contents.Field.BlockStatus.MsgError == 0 else format(0x1, "02x")
+def get_dict(**args: object) -> dict:
+    """
+    @param args: json keys and values
+    @return: dict
+    """
+    return args
 
-    # getting adapter ID
-    adapter_id = format(pkt_hdr.ch_id, "04x")
 
-    # 1553 data type
-    data_type = format(packet.DataType.MIL1553_FMT_1, "04x")
+def is_msg_fix(msg: object) -> bool:
+    """
+    @param msg:
+    @return: Boolean. True if msg status is OK else False
+    """
+    return msg.p1553Hdr.contents.Field.BlockStatus.MsgError == 0
 
-    time_tagging = format(msg.p1553Hdr.contents.Field.PktTime, "016x")
 
-    seq_num = format(pkt_hdr.seq_num, "08x")
-
-    data_len = format(pkt_hdr.data_len, "08x")
-
-    msg_header_flags = format(pkt_hdr.packet_flags, "02x")
-
-    return header_msg_dict([msg_sts, adapter_id, data_type, time_tagging, seq_num, data_len, msg_header_flags])
+def get_1553_header(pkt_hdr, msg) -> dict:
+    return get_dict(
+        MSG_STATUS=c.FIX_STATUS if is_msg_fix(msg) else c.NOT_FIX_STATUS,
+        ADAPTER_ID=format(pkt_hdr.ch_id, "04x"),  # pass
+        DATA_TYPE=format(packet.DataType.MIL1553_FMT_1, "04x"),  # pass
+        TIME_TAG=format(msg.p1553Hdr.contents.Field.PktTime, "016x"),
+        SERIAL=format(pkt_hdr.seq_num, "08x"),
+        DATA_LENGTH=format(pkt_hdr.data_len, "08x"),
+        HEADER_FLAGS=format(pkt_hdr.packet_flags, "02x")
+    )
 
 
 def body_1553_msg(msg, decoder_1553) -> dict:
     # busID A -> 0 or busID B -> 1
-    bus_ID = 'B' if msg.p1553Hdr.contents.Field.BlockStatus.BusID == 1 else 'A'
+    bus_ID = ord(65 + msg.p1553Hdr.contents.Field.BlockStatus.BusID)
 
     # getting info we need from command word
     tr_1 = msg.pCmdWord1.contents.Field.RTAddr
@@ -113,14 +195,13 @@ def body_1553_msg(msg, decoder_1553) -> dict:
 def msg_1553(pkt_hdr, msg, decoder_1553) -> dict:
     return \
         {
-            'HEADER_MSG': header_1553_msg(pkt_hdr, msg),
+            'HEADER_MSG': get_1553_header(pkt_hdr, msg),
 
             'BODY_MSG': body_1553_msg(msg, decoder_1553)
         }
 
 
 def create_output_file(pkt_io, decode1553) -> None:
-
     with open(c.OUTPUT_FILE_PATH, "wt") as f:
         # opening an array of messages
         f.write("[\n")
