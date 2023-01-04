@@ -3,25 +3,16 @@ import ijson as stream
 import constants as c
 
 
-<<<<<<< Updated upstream:source/writer.py
-class Writer:
-# ''' ---------------------------------------------------------------------------------------------------------'''
-=======
 class Message_Exalt:
     # ''' ---------------------------------------------------------------------------------------------------------'''
->>>>>>> Stashed changes:source/message_ex.py
 
     # ''' --------------------------------------------------------------------------------------'''
     # Constants for dictionary keys
     HEADER_MSG = 'HEADER_MSG'
     BODY_MSG = 'BODY_MSG'
-<<<<<<< Updated upstream:source/writer.py
-=======
     DATA_WORDS = 'DATA_WORDS'
 
->>>>>>> Stashed changes:source/message_ex.py
     # ''' --------------------------------------------------------------------------------------'''
-
 
     # ''' --------------------------------------------------------------------------------------'''
     # generic methods for class
@@ -31,25 +22,19 @@ class Message_Exalt:
         for i, value in enumerate(values):
             values[i] = int(value, 16)
         return values
-    # ''' --------------------------------------------------------------------------------------'''
 
+    # ''' --------------------------------------------------------------------------------------'''
 
     # ''' --------------------------------------------------------------------------------------'''
     # Header message functions
-<<<<<<< Updated upstream:source/writer.py
-    @staticmethod
-    def header_bytes(record) -> bytes:
-         # setting format bytes
-=======
+
     def header_bytes(self, record) -> bytes:
         # setting format bytes
->>>>>>> Stashed changes:source/message_ex.py
         header_msg_format = ">B2HQ2LB"
         return s.pack(header_msg_format, *self.convert_hex_array(
             [value for _, value in record[Message_Exalt.HEADER_MSG].items()]))
 
     # ''' --------------------------------------------------------------------------------------'''
-
 
     # ''' --------------------------------------------------------------------------------------'''
     # Body message functions
@@ -84,8 +69,10 @@ class Message_Exalt:
 
         with open(c.EXALT_FILE_PATH, "ab") as output:
             # TODO: check if file position pointer in the correct place
-            output.write(content_data_bytes)                  
-    # ''' --------------------------------------------------------------------------------------'''
+            output.write(content_data_bytes)
+            # ''' --------------------------------------------------------------------------------------'''
+
+
 # ''' ---------------------------------------------------------------------------------------------------------'''
 
 

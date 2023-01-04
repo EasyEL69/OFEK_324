@@ -1,5 +1,4 @@
 "importing all modules"
-try:
     from Py106.MsgDecode1553 import Decode1553F1
     from Py106.time import Time
     import Py106.packet as packet
