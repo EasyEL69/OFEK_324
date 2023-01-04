@@ -9,12 +9,11 @@ import sys
 
 import numpy
 import tables
-
-import Py106.MsgDecode1553
+import source.Py106.MsgDecode1553
 # import Py106
-import Py106.packet
-import Py106.status
-import Py106.time
+import source.Py106.packet
+import source.Py106.status
+import source.Py106.time
 
 
 # import time
@@ -51,7 +50,7 @@ class Msg1553(object):
             self.layout_version = 2
 
         # 1553 message data
-        self.msg_time = Py106.time.IrigTime()
+        self.msg_time = source.Py106.time.IrigTime()
         self.chan_id = numpy.uint16(0)
         self.header_flags = numpy.uint16(0)
         self.cmd_word_1 = numpy.uint16(0)
@@ -120,41 +119,41 @@ class Msg1553(object):
 
         # Version 1 - Data is stored in H5 table as a pickled Python tuple
         if self.layout_version == 1:
-            self.msg_time = Py106.time.IrigTime()
+            self.msg_time = source.Py106.time.IrigTime()
             self.msg_time.time = datetime.datetime.utcfromtimestamp(msg_tuple[0])
             self.msg_time.time = self.msg_time.time.replace(microsecond=msg_tuple[1])
             self.msg_time.dt_format = msg_tuple[2]
 
             self.chan_id = msg_tuple[3]
 
-            self.header_flags = Py106.MsgDecode1553.Hdr1553_Flags()
+            self.header_flags = source.Py106.MsgDecode1553.Hdr1553_Flags()
             flags_p = ctypes.pointer(self.header_flags)
             flags_ip = ctypes.cast(flags_p, ctypes.POINTER(ctypes.c_uint16))
             flags_ip[0] = msg_tuple[4]
 
-            self.cmd_word_1 = Py106.MsgDecode1553.CmdWord(msg_tuple[5])
-            self.stat_word_1 = Py106.MsgDecode1553.StatWord(msg_tuple[6])
-            self.cmd_word_2 = Py106.MsgDecode1553.CmdWord(msg_tuple[7])
-            self.stat_word_2 = Py106.MsgDecode1553.StatWord(msg_tuple[8])
+            self.cmd_word_1 = source.Py106.MsgDecode1553.CmdWord(msg_tuple[5])
+            self.stat_word_1 = source.Py106.MsgDecode1553.StatWord(msg_tuple[6])
+            self.cmd_word_2 = source.Py106.MsgDecode1553.CmdWord(msg_tuple[7])
+            self.stat_word_2 = source.Py106.MsgDecode1553.StatWord(msg_tuple[8])
             self.data = msg_tuple[9]
 
         elif self.layout_version == 2:
-            self.msg_time = Py106.time.IrigTime()
+            self.msg_time = source.Py106.time.IrigTime()
             self.msg_time.time = datetime.datetime.utcfromtimestamp((msg_tuple[0] << 16) | msg_tuple[1])
             self.msg_time.time = self.msg_time.time.replace(microsecond=(msg_tuple[2] << 16) | msg_tuple[3])
             self.msg_time.dt_format = msg_tuple[4]
 
             self.chan_id = msg_tuple[5]
 
-            self.header_flags = Py106.MsgDecode1553.Hdr1553_Flags()
+            self.header_flags = source.Py106.MsgDecode1553.Hdr1553_Flags()
             flags_p = ctypes.pointer(self.header_flags)
             flags_ip = ctypes.cast(flags_p, ctypes.POINTER(ctypes.c_uint16))
             flags_ip[0] = msg_tuple[6]
 
-            self.cmd_word_1 = Py106.MsgDecode1553.CmdWord(msg_tuple[7])
-            self.stat_word_1 = Py106.MsgDecode1553.StatWord(msg_tuple[8])
-            self.cmd_word_2 = Py106.MsgDecode1553.CmdWord(msg_tuple[9])
-            self.stat_word_2 = Py106.MsgDecode1553.StatWord(msg_tuple[10])
+            self.cmd_word_1 = source.Py106.MsgDecode1553.CmdWord(msg_tuple[7])
+            self.stat_word_1 = source.Py106.MsgDecode1553.StatWord(msg_tuple[8])
+            self.cmd_word_2 = source.Py106.MsgDecode1553.CmdWord(msg_tuple[9])
+            self.stat_word_2 = source.Py106.MsgDecode1553.StatWord(msg_tuple[10])
             self.data = []
             for data_index in range(11, len(msg_tuple)):
                 self.data.append(msg_tuple[data_index])
@@ -264,9 +263,9 @@ def open_h5(hdf5_filename):
 
 def import_ch10(irig_filename, hdf5_filename, status_callback=None):
     # Make IRIG 106 library classes
-    pkt_io = Py106.packet.IO()
-    time_utils = Py106.time.Time(pkt_io)
-    decode1553 = Py106.MsgDecode1553.Decode1553F1(pkt_io)
+    pkt_io = source.Py106.packet.IO()
+    time_utils = source.Py106.time.Time(pkt_io)
+    decode1553 = source.Py106.MsgDecode1553.Decode1553F1(pkt_io)
 
     # Initialize variables
     packet_count = 0
@@ -274,8 +273,8 @@ def import_ch10(irig_filename, hdf5_filename, status_callback=None):
     msg_count_1553 = 0
 
     # Open the IRIG file
-    ret_status = pkt_io.open(irig_filename, Py106.packet.FileMode.READ)
-    if ret_status != Py106.status.OK:
+    ret_status = pkt_io.open(irig_filename, source.Py106.packet.FileMode.READ)
+    if ret_status != source.Py106.status.OK:
         print("Error opening data file %s" % (irig_filename))
         sys.exit(1)
 
@@ -315,11 +314,11 @@ def import_ch10(irig_filename, hdf5_filename, status_callback=None):
             progress = float(offset) / float(file_size)
             status_callback(progress)
 
-        if pkt_hdr.data_type == Py106.packet.DataType.IRIG_TIME:
+        if pkt_hdr.data_type == source.Py106.packet.DataType.IRIG_TIME:
             pkt_io.read_data()
             time_utils.set_rel_time()
 
-        if pkt_hdr.data_type == Py106.packet.DataType.MIL1553_FMT_1:
+        if pkt_hdr.data_type == source.Py106.packet.DataType.MIL1553_FMT_1:
 
             packet_count_1553 += 1
             pkt_io.read_data()

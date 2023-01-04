@@ -17,7 +17,7 @@ import platform
 import sys
 
 # import datetime
-import Py106.status as status
+import source.Py106.status as status
 
 
 # ---------------------------------------------------------------------------
