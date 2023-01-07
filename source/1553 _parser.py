@@ -1,4 +1,3 @@
-"importing all modules"
 try:
     from Py106.MsgDecode1553 import Decode1553F1
     from Py106.time import Time
@@ -7,7 +6,7 @@ try:
     import json
     import sys
     import constants as c
-except:
+except ImportError:
     print("ERROR IN IMPORTING")
     sys.exit(1)
 
