@@ -5,7 +5,7 @@ class Adapter:
     # TODO: check what the hell is the VERSION of the adapter!?!?
     ADAPTER_VERSION = 2.0
 
-    # information will be get from outside input (input will be hush table)
+    # information will get from outside input (input will be hush table)
     def __init__(self, hash_map, adapter_id: int):
         self._struct_bytes = s.pack(self.format_struct(hash_map, adapter_id),
                                     len(hash_map[adapter_id].name),
