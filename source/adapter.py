@@ -1,5 +1,6 @@
 import struct as s
 from typing import Final
+import source.constants as c
 
 
 class Adapter:
@@ -18,8 +19,8 @@ class Adapter:
         except IndexError:
             return 'muxbus not found'
 
-    def __init__(self, adapter_id: int):
-        self._adapter_id: Final[int] = adapter_id
+    def __init__(self, adapter_id: str):
+        self._adapter_id: Final[int] = int(adapter_id, c.BASE_HEX)
 
     @property
     def format_struct(self) -> str:
