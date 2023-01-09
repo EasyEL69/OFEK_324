@@ -27,10 +27,6 @@ class Message_Exalt:
 
     # ''' --------------------------------------------------------------------------------------'''
     # Header message functions
-<<<<<<< HEAD
-
-=======
->>>>>>> 3b1a7cb5dda7c2b4b28fb7716ac9d201d9dc218c
     def header_bytes(self, record) -> bytes:
         # setting format bytes
         header_msg_format = ">B2HQ2LB"

@@ -1,0 +1,5 @@
+numpy
+tables
+ijson
+pytest
+flask

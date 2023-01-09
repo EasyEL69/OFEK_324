@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 "importing all modules"
-=======
 try:
->>>>>>> 3b1a7cb5dda7c2b4b28fb7716ac9d201d9dc218c
     from Py106.MsgDecode1553 import Decode1553F1
     from Py106.time import Time
     import Py106.packet as packet
@@ -11,7 +8,7 @@ try:
     import sys
     import constants as c
 except ImportError:
-    print("ERROR IN IMPORTING")
+    raise ImportError
     sys.exit(1)
 
 

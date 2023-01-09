@@ -1,30 +1,36 @@
 import struct as s
+from typing import Final
 
 
 class Adapter:
-    # TODO: check what the hell is the VERSION of the adapter!?!?
-    ADAPTER_VERSION = 2.0
+    # TODO: future feature changing adapter version from config file
+    ADAPTER_VERSION = 1
+    MUXBUS_NAMES = ['amx8', 'amx5', 'amx6', 'muxd', 'amxfast', 'muxw', 'muxchoco']
 
-    # information will get from outside input (input will be hush table)
-    def __init__(self, hash_map, adapter_id: int):
-        self._struct_bytes = s.pack(self.format_struct(hash_map, adapter_id),
-                                    len(hash_map[adapter_id].name),
-                                    hash_map[adapter_id].name,
-                                    len(hash_map[adapter_id].mux_bus),
-                                    hash_map[adapter_id].mux_bus,
-                                    adapter_id,
-                                    self.ADAPTER_VERSION)
-
-    @staticmethod
-    def format_struct(hash_map: any, adapter_id: int) -> str:
-        """
-        @param hash_map: object
-        @param adapter_id: adapter serial number
-        @return: bytes format string in order to pack data.
-        """
-        return ">I{length}sI{mux_bus_name}s2H".format(length=len(hash_map[adapter_id].name),
-                                                      mux_bus_name=hash_map[adapter_id].muxbus)
+    # all of adapter's type in project is MUXBUS!
+    TYPE = 'MuxBus'
+    TYPE_LEN = 6
 
     @property
-    def get_bytes(self) -> bytes:
-        return self._struct_bytes
+    def muxbux_name(self) -> str:
+        try:
+            return self.MUXBUS_NAMES[self._adapter_id - 1]
+        except IndexError:
+            return 'muxbus not found'
+
+    def __init__(self, adapter_id: int):
+        self._adapter_id: Final[int] = adapter_id
+
+    @property
+    def format_struct(self) -> str:
+        return ">i{len_name}si{len_type}s2H".format(len_name=len(self.muxbux_name),
+                                                    len_type=self.TYPE_LEN)
+
+    def to_pack(self) -> bytes:
+        return s.pack(self.format_struct,
+                      len(self.muxbux_name),
+                      self.muxbux_name,
+                      self.TYPE_LEN,
+                      self.TYPE,
+                      self._adapter_id,
+                      self.ADAPTER_VERSION)
