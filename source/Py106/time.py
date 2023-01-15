@@ -8,6 +8,7 @@ import source.Py106.MsgDecodeTime as MsgDecodeTime
 import source.Py106.packet as packet
 import source.Py106.status as status
 
+from source.constants import C10_PATH
 
 # from datetime import date
 # from time     import time
@@ -207,13 +208,9 @@ if __name__ == '__main__':
     packet_io = packet.IO()
     time_utils = Time(packet_io)
 
-    if len(sys.argv) > 1:
-        open_status = packet_io.open(sys.argv[1], packet.FileMode.READ)
-        if open_status != status.OK:
-            print("Error opening data file %s" % (sys.argv[1]))
-            sys.exit(1)
-    else:
-        print("Usage : time.py <filename>")
+    open_status = packet_io.open('C:/Users/user/Documents/GitHub/Ofek_Master_Proj/OFEK_324/files/sample.c10', packet.FileMode.READ)
+    if open_status != status.OK:
+        print("Error opening data file %s" % (sys.argv[1]))
         sys.exit(1)
 
     sync_status = time_utils.sync_time(False, 0)
@@ -231,6 +228,7 @@ if __name__ == '__main__':
                        pkt_hdr.ref_time[0]
         #        IrigTime = iTime.Rel2IrigTime(IntRefTime)
         pkt_time = time_utils.rel_to_irig_time(pkt_hdr.ref_time)
+
         print("'%s' %012X  ch_id %3d  Data Type %-16s" % ( \
             pkt_time, int_ref_time, pkt_hdr.ch_id, packet.DataType.type_name(pkt_hdr.data_type)))
     #            IrigTime2String(pkt_time), IntRefTime, pkt_hdr.ch_id, packet.DataType.TypeName(pkt_hdr.DataType))

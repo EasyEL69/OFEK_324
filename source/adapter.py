@@ -28,10 +28,12 @@ class Adapter:
                                                     len_type=self.TYPE_LEN)
 
     def to_pack(self) -> bytes:
+        # Note: when using string buffer for packing make sure to encode the string before packing it with
+        # encode/bytes function
         return s.pack(self.format_struct,
                       len(self.muxbux_name),
-                      self.muxbux_name,
+                      self.muxbux_name.encode('utf-8'),
                       self.TYPE_LEN,
-                      self.TYPE,
+                      self.TYPE.encode('utf-8'),
                       self._adapter_id,
                       self.ADAPTER_VERSION)

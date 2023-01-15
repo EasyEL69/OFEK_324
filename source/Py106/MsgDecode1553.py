@@ -6,8 +6,7 @@ Created on Jan 4, 2012
 
 import ctypes
 
-# import Py106.packet as packet
-import packet
+import source.Py106.packet as packet
 
 # ---------------------------------------------------------------------------
 # 1553 packet data structures

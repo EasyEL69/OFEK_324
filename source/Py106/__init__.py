@@ -42,8 +42,8 @@ Py106.MsgDecode1553 - Extract 1553 messages from a 1553 packet
 """
 
 try:
-    import Py106.packet as packet
-    import Py106.status as status
+    import source.Py106.packet as packet
+    import source.Py106.status as status
 
 except ImportError:
     print('Py106 init error - Error importing modules')

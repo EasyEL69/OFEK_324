@@ -1,15 +1,14 @@
-"importing all modules"
 try:
-    from Py106.MsgDecode1553 import Decode1553F1
-    from Py106.time import Time
-    import Py106.packet as packet
-    import Py106.status as status
+    from source.Py106.MsgDecode1553 import Decode1553F1
+    from source.Py106.time import Time
+    import source.Py106.packet as packet
+    import source.Py106.status as status
+    from pathlib import Path
     import json
     import sys
     import constants as c
 except ImportError:
     raise ImportError
-    sys.exit(1)
 
 
 def header_msg_dict(args) -> dict:
@@ -66,7 +65,7 @@ def header_1553_msg(pkt_hdr, msg) -> dict:
 
 def body_1553_msg(msg, decoder_1553) -> dict:
     # busID A -> 0 or busID B -> 1
-    bus_ID = 'B' if msg.p1553Hdr.contents.Field.BlockStatus.BusID == 1 else 'A'
+    bus_id = 'B' if msg.p1553Hdr.contents.Field.BlockStatus.BusID == 1 else 'A'
 
     # getting info we need from command word
     tr_1 = msg.pCmdWord1.contents.Field.RTAddr
@@ -87,7 +86,7 @@ def body_1553_msg(msg, decoder_1553) -> dict:
     cmd_word_2 = None
     status_word_2 = None
 
-    # checking for rt2rt communicate messages
+    # checking for rt to rt communicate messages
     if msg.p1553Hdr.contents.Field.BlockStatus.RT2RT != 0:
         tr_2 = msg.pCmdWord2.contents.Field.RTAddr
         sa_2 = msg.pCmdWord2.contents.Field.SubAddr
@@ -106,7 +105,7 @@ def body_1553_msg(msg, decoder_1553) -> dict:
 
     # TODO: add additional 1553 flags
 
-    return body_msg_dict([bus_ID, tr_1, sa_1, tr_2, sa_2, tr_or_rec, cmd_word_1, status_word_1,
+    return body_msg_dict([bus_id, tr_1, sa_1, tr_2, sa_2, tr_or_rec, cmd_word_1, status_word_1,
                           cmd_word_2, status_word_2, word_count, data_words])
 
 
