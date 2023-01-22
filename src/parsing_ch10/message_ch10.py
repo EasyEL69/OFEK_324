@@ -1,7 +1,4 @@
-from Py106.MsgDecode1553 import *
-from Py106.time import Time
-import Py106.packet as packet
-import Py106.status as status
+import src.parsing_ch10.Py106.packet as packet
 
 
 class Message:

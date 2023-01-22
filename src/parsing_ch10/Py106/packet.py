@@ -17,7 +17,7 @@ import platform
 import sys
 
 # import datetime
-import source.Py106.status as status
+import src.parsing_ch10.Py106.status as status
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ class Header(ctypes.Structure):
 # ---------------------------------------------------------------------------
 
 
-class FileMode():
+class FileMode:
     """ Data file open mode """
     CLOSED = 0
     READ = 1  # Open an existing file for reading
@@ -152,7 +152,7 @@ def I106_Ch10Open(file_name, file_mode):
     #                                         file_mode)
     ret_status = irig_data_dll.enI106Ch10Open(
         ctypes.byref(handle), file_name.encode('ascii'), file_mode)
-    return (ret_status, handle)
+    return ret_status, handle
 
 
 def I106_Ch10Close(handle):
@@ -212,7 +212,7 @@ def I106_Ch10GetPos(handle):
     # handle - IRIG file handle
     offset = ctypes.c_uint64(0)
     ret_status = irig_data_dll.enI106Ch10GetPos(handle, ctypes.byref(offset))
-    return (ret_status, offset.value)
+    return ret_status, offset.value
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +292,7 @@ class IO(object):
     def get_pos(self):
         """Get the current file offset in bytes"""
         (ret_status, offset) = I106_Ch10GetPos(self._handle)
-        return (ret_status, offset)
+        return ret_status, offset
 
 
 # ---------------------------------------------------------------------------

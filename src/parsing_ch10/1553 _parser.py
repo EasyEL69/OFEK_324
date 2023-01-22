@@ -1,12 +1,12 @@
 try:
-    from source.Py106.MsgDecode1553 import Decode1553F1
-    from source.Py106.time import Time
-    import source.Py106.packet as packet
-    import source.Py106.status as status
+    from src.parsing_ch10.Py106.MsgDecode1553 import Decode1553F1
+    from src.parsing_ch10.Py106.time import Time
+    import src.parsing_ch10.Py106.packet as packet
+    import src.parsing_ch10.Py106.status as status
     from pathlib import Path
     import json
     import sys
-    import constants as c
+    import src.constants as c
 except ImportError:
     raise ImportError
 
@@ -143,7 +143,7 @@ def create_output_file(pkt_io, decode1553) -> None:
 
 
 def parse() -> None:
-    """ inspired by an open source code parsing
+    """ inspired by an open src code parsing
             Created on Jan 4, 2012
             by author: rb45
         """

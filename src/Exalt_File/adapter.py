@@ -1,6 +1,6 @@
 import struct as s
 from typing import Final
-import source.constants as c
+import src.constants as c
 
 
 class Adapter:

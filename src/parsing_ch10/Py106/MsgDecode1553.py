@@ -6,7 +6,9 @@ Created on Jan 4, 2012
 
 import ctypes
 
-import source.Py106.packet as packet
+import src.parsing_ch10.Py106.packet as packet
+import src.parsing_ch10.Py106.status
+
 
 # ---------------------------------------------------------------------------
 # 1553 packet data structures
@@ -214,6 +216,6 @@ class Decode1553F1(object):
     def msgs(self):
         """ Iterator of individual 1553 messages """
         ret_status = self.decode_first1553f1()
-        while ret_status == packet.status.OK:
+        while ret_status == src.parsing_ch10.Py106.status.OK:
             yield self.CurrMsg
             ret_status = self.decode_next1553f1()

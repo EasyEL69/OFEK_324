@@ -4,11 +4,10 @@ import datetime
 import sys
 import traceback
 
-import source.Py106.MsgDecodeTime as MsgDecodeTime
-import source.Py106.packet as packet
-import source.Py106.status as status
+import src.parsing_ch10.Py106.MsgDecodeTime as MsgDecodeTime
+import src.parsing_ch10.Py106.packet as packet
+import src.parsing_ch10.Py106.status as status
 
-from source.constants import C10_PATH
 
 # from datetime import date
 # from time     import time
@@ -58,7 +57,7 @@ def I106_SetRelTime(handle, irig_time, rel_time):
 def I106_SyncTime(handle, require_sync, time_limit):
     """ Search for time and set relative to absolute time reference"""
     # handle - IRIG file handle
-    # require_sync - Bool indicating whether time source must be externally sync'ed to be valid
+    # require_sync - Bool indicating whether time src must be externally sync'ed to be valid
     # time_limit = Maximum amount of time in seconds to scan forward in the file 
     return packet.irig_data_dll.enI106_SyncTime(handle, require_sync, time_limit)
 
@@ -208,7 +207,7 @@ if __name__ == '__main__':
     packet_io = packet.IO()
     time_utils = Time(packet_io)
 
-    open_status = packet_io.open('C:/Users/user/Documents/GitHub/Ofek_Master_Proj/OFEK_324/files/sample.c10', packet.FileMode.READ)
+    open_status = packet_io.open('/resources/sample.c10', packet.FileMode.READ)
     if open_status != status.OK:
         print("Error opening data file %s" % (sys.argv[1]))
         sys.exit(1)
@@ -229,7 +228,7 @@ if __name__ == '__main__':
         #        IrigTime = iTime.Rel2IrigTime(IntRefTime)
         pkt_time = time_utils.rel_to_irig_time(pkt_hdr.ref_time)
 
-        print("'%s' %012X  ch_id %3d  Data Type %-16s" % ( \
+        print("'%s' %012X  ch_id %3d  Data Type %-16s" % (
             pkt_time, int_ref_time, pkt_hdr.ch_id, packet.DataType.type_name(pkt_hdr.data_type)))
     #            IrigTime2String(pkt_time), IntRefTime, pkt_hdr.ch_id, packet.DataType.TypeName(pkt_hdr.DataType))
     #            pkt_time.time.isoformat(' '), IntRefTime, pkt_hdr.ch_id, packet.DataType.TypeName(pkt_hdr.DataType))

@@ -1,9 +1,9 @@
 import ctypes
 import sys
 
-import source.Py106.packet as packet
-import source.Py106.status as status
-import source.Py106.time as time
+import src.parsing_ch10.Py106.packet as packet
+import src.parsing_ch10.Py106.status as status
+import src.parsing_ch10.Py106.time as time
 
 # ---------------------------------------------------------------------------
 # IRIG Time packet data structures
