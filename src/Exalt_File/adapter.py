@@ -13,6 +13,7 @@ class Adapter:
     TYPE_LEN = 6
 
     count = 0
+    all_adapters = []
 
     @property
     def muxbux_name(self) -> str:
@@ -40,7 +41,7 @@ class Adapter:
                       self._adapter_id,
                       self.ADAPTER_VERSION)
 
-    # make sure we count al adapters in program!
+    # make sure we count all adapters in program!
     @classmethod
     def inc_counter(cls):
         cls.count += 1
@@ -48,3 +49,12 @@ class Adapter:
     @classmethod
     def get_counter(cls):
         return cls.count
+
+    @classmethod
+    def append_adapter(cls, adapter_id) -> None:
+        if adapter_id not in cls.all_adapters:
+            cls.all_adapters.append(adapter_id)
+
+    @classmethod
+    def get_adapters(cls):
+        return cls.all_adapters
