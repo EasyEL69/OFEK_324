@@ -4,7 +4,7 @@ import src.constants as c
 
 
 class Adapter:
-    # TODO: future feature changing adapter version from config file
+    # TODO: future feature changing adapter version from config file and make a comparison with current struct to OFRI
     ADAPTER_VERSION = 1
     MUXBUS_NAMES = ['amx8', 'amx5', 'amx6', 'muxd', 'amxfast', 'muxw', 'muxchoco']
 
@@ -12,12 +12,14 @@ class Adapter:
     TYPE = 'MuxBus'
     TYPE_LEN = 6
 
+    count = 0
+
     @property
     def muxbux_name(self) -> str:
         try:
             return self.MUXBUS_NAMES[self._adapter_id - 1]
         except IndexError:
-            return 'muxbus not found'
+            return '______'
 
     def __init__(self, adapter_id: str):
         self._adapter_id: Final[int] = int(adapter_id, c.BASE_HEX)
@@ -27,7 +29,7 @@ class Adapter:
         return ">i{len_name}si{len_type}s2H".format(len_name=len(self.muxbux_name),
                                                     len_type=self.TYPE_LEN)
 
-    def to_pack(self) -> bytes:
+    def pack(self) -> bytes:
         # Note: when using string buffer for packing make sure to encode the string before packing it with
         # encode/bytes function
         return s.pack(self.format_struct,
@@ -37,3 +39,12 @@ class Adapter:
                       self.TYPE.encode('utf-8'),
                       self._adapter_id,
                       self.ADAPTER_VERSION)
+
+    # make sure we count al adapters in program!
+    @classmethod
+    def inc_counter(cls):
+        cls.count += 1
+
+    @classmethod
+    def get_counter(cls):
+        return cls.count
