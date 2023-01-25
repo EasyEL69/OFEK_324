@@ -9,7 +9,7 @@ class Message(ABC):
 
     num_of_msg = 0
 
-    def __init__(self, msg_sts, adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags):
+    def __init__(self, adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags, msg_sts):
         self.flags = flags
         self.num_data_bytes = num_data_bytes
         self.serial = serial
@@ -107,7 +107,7 @@ class Msg_1553(Message):
                  msg_sts: int = 0x11,
                  px_status: int = BUS_A_XFER | END_OF_MSG):
         # make sure the child class inherit all the methods and properties from its parent
-        super().__init__(msg_sts, adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags)
+        super().__init__(adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags, msg_sts)
 
         self.cmd_word_1 = cmd_word_1
         self.cmd_word_2 = cmd_word_2
