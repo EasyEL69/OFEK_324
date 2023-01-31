@@ -44,8 +44,6 @@ class Message(ABC):
                       self.offset_prev_msg_type
                       )
 
-    # TODO: set implement to set_offset func when algorithm is implement
-
     def set_offset_to_next_msg(self, offset: int) -> None:
         self.offset_next_msg = offset
 
