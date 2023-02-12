@@ -3,7 +3,7 @@ import struct as s
 
 
 class Entry:
-    UNSIGNED_LONG_LONG = '>Q'
+    UNSIGNED_LONG_LONG = '<Q'
 
     def __init__(self, file_position: int = 0):
         self.file_position = file_position

@@ -13,10 +13,10 @@ class First_Msg_Of_Type_Table(Marker_Table):
 
         self.table_type: Final[int] = self.FIRST_MSG_OF_TYPE_TABLE_TYPE
 
-        super().entries = [Entry()] * num_of_entries
-
         super().__init__(self.BEGIN_STRING, self.table_type, First_Message_Of_Type_Entry().get_size(),
                          num_of_entries, self.END_STRING, time_tag)
+
+        self.entries = [Entry()] * num_of_entries
 
         for i in (range(len(self.entries))):
             self.entries[i] = First_Message_Of_Type_Entry()

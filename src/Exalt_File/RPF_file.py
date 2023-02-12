@@ -19,3 +19,6 @@ class RPF_file:
             ofstream.write(self.head_rpf.to_pack())
             ofstream.write((self.sys_config.pack()))
             ofstream.write(0)  # no trigger list
+
+            # TODO: write the markers tables!
+            # TODO: write all messages

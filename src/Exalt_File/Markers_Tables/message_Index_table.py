@@ -10,13 +10,12 @@ class First_Msg_Of_Type_Table(Marker_Table):
     MSG_INDEX_TABLE_TYPE: Final[int] = 0
 
     def __init__(self, time_tag: int = 0, num_of_entries: int = 0):
-
         self.table_type: Final[int] = self.MSG_INDEX_TABLE_TYPE
-
-        super().entries = [Entry()] * num_of_entries
 
         super().__init__(self.BEGIN_STRING, self.table_type, Message_Index_Entry().get_size(),
                          num_of_entries, self.END_STRING, time_tag)
+
+        self.entries = [Entry()] * num_of_entries
 
         for i in (range(len(self.entries))):
             self.entries[i] = Message_Index_Entry()

@@ -13,10 +13,10 @@ class Counts_Index_Table(Marker_Table):
 
         self.table_type: Final[int] = self.COUNT_INDEX_TABLE_TYPE
 
-        super().entries = [Entry()] * num_of_entries
-
         super().__init__(self.BEGIN_STRING, self.table_type, Count_Index_Entry().get_size(),
                          num_of_entries, self.END_STRING, time_tag)
+
+        self.entries = [Entry()] * num_of_entries
 
         for i in (range(len(self.entries))):
             self.entries[i] = Count_Index_Entry()

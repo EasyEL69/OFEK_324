@@ -1,11 +1,12 @@
 import struct as s
-from abc import ABC
-from typing import Optional
+from typing import Optional, Final
 import functools
 
+BASE_HEX: Final[int] = 16
 
-class Message(ABC):
-    MESSAGE_FORMAT = ">B2HQ2IB2I4Q"
+
+class Message:
+    MESSAGE_FORMAT = "<B2HQ2IB2I4Q"
 
     num_of_msg = 0
 
@@ -62,14 +63,6 @@ class Message(ABC):
     def set_offset_prev_msg_type(self, offset: int) -> None:
         self.offset_prev_msg_type = offset
 
-    @classmethod
-    def inc_num_of_msg(cls):
-        cls.num_of_msg += 1
-
-    @classmethod
-    def get_num_of_msgs(cls):
-        return cls.num_of_msg
-
 
 def convert_optional_none_to(default_value=0x0000):
     def convert_optional_none_to_inner(func):
@@ -94,7 +87,7 @@ class Msg_1553(Message):
                  cmd_word_2: Optional[int],
                  sts_word_1: int,
                  sts_word_2: Optional[int],
-                 data_words: list[int],
+                 data_words: list[str],
                  adapter_id: int,
                  phys_msg_type: int,
                  time_tag: int,
@@ -117,7 +110,7 @@ class Msg_1553(Message):
 
     @property
     def content_format(self) -> str:
-        return '>5H{}HH'.format(len(self.data_words))
+        return '<5H{}HH'.format(len(self.data_words))
 
     def pack(self) -> bytes:
         return super().pack() + s.pack(self.content_format,
@@ -126,6 +119,6 @@ class Msg_1553(Message):
                                        self.sts_word_1,
                                        self.sts_word_2,
                                        self.px_status,
-                                       *self.data_words,
+                                       *[int(data_word, BASE_HEX) for data_word in self.data_words],
                                        self.flags_1553
                                        )
