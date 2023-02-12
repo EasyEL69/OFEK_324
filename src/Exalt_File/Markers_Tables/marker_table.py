@@ -16,6 +16,9 @@ class Marker_Table(Message):
         self.entry_index: int = 0
         self.table_data: bytearray = bytearray((self.entry_size * self.num_of_entries) * b'\x00')
 
+        # will be init in subclasses
+        self.entries: list[Entry] = None
+
         # first message header is from adapter 0xFFFC according to Exalt replay file document
         super().__init__(0xFFFC, table_type, time_tag, 0, 0, 0, c.FIX_MSG_START)
 

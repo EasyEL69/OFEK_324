@@ -1,4 +1,4 @@
-from src.Exalt_File.adapter import Adapter
+from src.Exalt_File.sys_config import Adapter
 import struct as s
 
 

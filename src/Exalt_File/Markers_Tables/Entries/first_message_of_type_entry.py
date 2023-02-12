@@ -5,7 +5,7 @@ import struct as s
 class First_Message_Of_Type_Entry(Entry):
     UNSIGNED_LONG = '>I'
 
-    def __init__(self, file_position, physical_message_type):
+    def __init__(self, file_position: int = 0, physical_message_type: int = 0):
         self.physical_message_type = physical_message_type
         super.__init__(file_position)
 

@@ -1,7 +1,7 @@
 import struct as s
 
 
-class Header_File:
+class Header_RPF:
 
     @property
     # set gap list position in file
@@ -15,7 +15,7 @@ class Header_File:
 
     def __int__(self, num_of_msgs: int, time_tag: int):
         # Setting header file struct
-        self.header_file_format: str = '>37sIi2q'
+        self.header_file_format: str = '<37sIL2Q'
 
         self.init_string: str = 'XCAL Replay file.........Version 2.00'
         self.num_of_msgs: int = num_of_msgs

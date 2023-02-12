@@ -9,7 +9,7 @@ class Message(ABC):
 
     num_of_msg = 0
 
-    def __init__(self, adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags, msg_sts):
+    def __init__(self, adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags, msg_sts=0x11):
         self.flags = flags
         self.num_data_bytes = num_data_bytes
         self.serial = serial

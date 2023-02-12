@@ -3,3 +3,4 @@ tables
 ijson
 pytest
 flask
+bjson
