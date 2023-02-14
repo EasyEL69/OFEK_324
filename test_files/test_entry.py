@@ -15,7 +15,7 @@ def tester_func_1():
 
 def tester_func_2():
     table: First_Msg_Of_Type_Table = First_Msg_Of_Type_Table(num_of_entries=8)
-    print(table.entries)
+    print(table.pack())
 
 
 def main():

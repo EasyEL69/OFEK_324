@@ -3,6 +3,20 @@ from typing import Optional, Final
 import functools
 
 BASE_HEX: Final[int] = 16
+DEFAULT_VALUE = 0x0000
+
+
+def convert_optional_none_to(default_value=0x0000):
+    def convert_optional_none_to_inner(func):
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            args_converted = [default_value if val is None else val for val in args]
+            kwargs_converted = {key: default_value if val is None else val for key, val in kwargs.items()}
+            return func(*args_converted, **kwargs_converted)
+
+        return wrapped
+
+    return convert_optional_none_to_inner
 
 
 class Message:
@@ -28,21 +42,22 @@ class Message:
         self.offset_next_msg_type = None
         self.offset_prev_msg_type = None
 
-    # TODO: check with Yitzhak that offset is written correctly in big indian
+    # TODO: NEED TO CONVERT NONE TO INTEGER VALUE
     def pack(self) -> bytes:
         return s.pack(self.MESSAGE_FORMAT,
                       self.msg_sts,
                       self.adapter_id,
                       self.phys_msg_type,
                       self.time_tag,
+                      self.serial,
                       self.num_data_bytes,
                       self.flags,
-                      self.offset_next_msg,
-                      self.offset_prev_msg,
-                      self.offset_next_msg_same_adapter,
-                      self.offset_prev_msg_same_adapter,
-                      self.offset_next_msg_type,
-                      self.offset_prev_msg_type
+                      self.offset_next_msg or DEFAULT_VALUE,
+                      self.offset_prev_msg or DEFAULT_VALUE,
+                      self.offset_next_msg_same_adapter or DEFAULT_VALUE,
+                      self.offset_prev_msg_same_adapter or DEFAULT_VALUE,
+                      self.offset_next_msg_type or DEFAULT_VALUE,
+                      self.offset_prev_msg_type or DEFAULT_VALUE
                       )
 
     def set_offset_to_next_msg(self, offset: int) -> None:
@@ -62,19 +77,6 @@ class Message:
 
     def set_offset_prev_msg_type(self, offset: int) -> None:
         self.offset_prev_msg_type = offset
-
-
-def convert_optional_none_to(default_value=0x0000):
-    def convert_optional_none_to_inner(func):
-        @functools.wraps(func)
-        def wrapped(*args, **kwargs):
-            args_converted = [default_value if val is None else val for val in args]
-            kwargs_converted = {key: default_value if val is None else val for key, val in kwargs.items()}
-            return func(*args_converted, **kwargs_converted)
-
-        return wrapped
-
-    return convert_optional_none_to_inner
 
 
 class Msg_1553(Message):

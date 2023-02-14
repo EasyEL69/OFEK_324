@@ -7,7 +7,7 @@ class First_Message_Of_Type_Entry(Entry):
 
     def __init__(self, file_position: int = 0, physical_message_type: int = 0):
         self.physical_message_type = physical_message_type
-        super.__init__(file_position)
+        super().__init__(file_position)
 
     def get_size(self) -> int:
         return super().get_size() + s.calcsize(self.UNSIGNED_LONG)

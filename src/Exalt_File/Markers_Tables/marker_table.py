@@ -37,6 +37,7 @@ class Marker_Table(Message):
         return True
 
     def pack(self) -> bytes:
+        # TODO CHECK STRUCT FORMAT
         return super().pack() + s.pack(self.format,
                                        self.time_tag,
                                        len(self.begin_string),

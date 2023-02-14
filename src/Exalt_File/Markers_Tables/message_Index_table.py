@@ -19,3 +19,6 @@ class First_Msg_Of_Type_Table(Marker_Table):
 
         for i in (range(len(self.entries))):
             self.entries[i] = Message_Index_Entry()
+
+    def pack(self) -> bytes:
+        return super().pack().join(entry.pack() for entry in self.entries)
