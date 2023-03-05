@@ -99,7 +99,6 @@ class Message:
 
     # -----------------------------------------------------------------------------------
     class Data_1553:
-        # TODO: implement class
         def __init__(self, record: CurrMsg_1553F1):
             if record.p1553Hdr.contents.Field.BlockStatus.MsgError == 0:
                 self.data_words = list(map(lambda x: '0x' + str(format(x, "04x")).upper(), record.pData.contents))

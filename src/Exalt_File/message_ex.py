@@ -3,7 +3,22 @@ from typing import Optional, Final
 import functools
 
 BASE_HEX: Final[int] = 16
-DEFAULT_VALUE = 0x0000
+DEFAULT_VALUE: Final[int] = 0xFFFFFFFF
+
+
+def convert_string_to_integer():
+    def convert_string_to_integer_inner(func):
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            args_converted = [int(val, BASE_HEX) if isinstance(val, str) and val != 'Msg Error' else val for val in
+                              args]
+            kwargs_converted = {key: int(val, BASE_HEX) if isinstance(val, str) and val != 'Msg Error' else val for
+                                key, val in kwargs.items()}
+            return func(*args_converted, **kwargs_converted)
+
+        return wrapped
+
+    return convert_string_to_integer_inner
 
 
 def convert_optional_none_to(default_value=0x0000):
@@ -22,9 +37,7 @@ def convert_optional_none_to(default_value=0x0000):
 class Message:
     MESSAGE_FORMAT = "<B2HQ2IB2I4Q"
 
-    num_of_msg = 0
-
-    def __init__(self, adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags, msg_sts=0x11):
+    def __init__(self, adapter_id: int, phys_msg_type: int, time_tag: int, serial, num_data_bytes, flags, msg_sts=0x11):
         self.flags = flags
         self.num_data_bytes = num_data_bytes
         self.serial = serial
@@ -42,7 +55,8 @@ class Message:
         self.offset_next_msg_type = None
         self.offset_prev_msg_type = None
 
-    # TODO: NEED TO CONVERT NONE TO INTEGER VALUE
+    # default_pack = convert_optional_none_to(DEFAULT_VALUE)(s.pack)
+
     def pack(self) -> bytes:
         return s.pack(self.MESSAGE_FORMAT,
                       self.msg_sts,
@@ -84,6 +98,7 @@ class Msg_1553(Message):
     END_OF_MSG = 0x0100
 
     @convert_optional_none_to(default_value=0x0000)
+    @convert_string_to_integer()
     def __init__(self,
                  cmd_word_1: int,
                  cmd_word_2: Optional[int],
@@ -102,11 +117,18 @@ class Msg_1553(Message):
         # make sure the child class inherit all the methods and properties from its parent
         super().__init__(adapter_id, phys_msg_type, time_tag, serial, num_data_bytes, flags, msg_sts)
 
-        self.cmd_word_1 = cmd_word_1
-        self.cmd_word_2 = cmd_word_2
-        self.sts_word_1 = sts_word_1
-        self.sts_word_2 = sts_word_2
-        self.data_words = data_words
+        self.cmd_word_1: int = cmd_word_1
+        self.cmd_word_2: int = cmd_word_2
+        self.sts_word_1: int = sts_word_1
+        self.sts_word_2: int = sts_word_2
+
+        # checks for error in messages
+        if data_words != 'Msg Error':
+            self.data_words: list[int] = [int(data_word, BASE_HEX) for data_word in data_words]
+        else:
+            self.data_words: list[int] = []
+            # TODO fix word count
+
         self.flags_1553 = flags_1553
         self.px_status = px_status
 
@@ -121,6 +143,6 @@ class Msg_1553(Message):
                                        self.sts_word_1,
                                        self.sts_word_2,
                                        self.px_status,
-                                       *[int(data_word, BASE_HEX) for data_word in self.data_words],
+                                       *self.data_words,
                                        self.flags_1553
                                        )

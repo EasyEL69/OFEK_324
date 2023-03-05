@@ -5,15 +5,15 @@ class Header_RPF:
 
     @property
     # set gap list position in file
-    def gap_list_pos(self) -> int:
-        return -1
+    def gap_list(self) -> int:
+        return 0
 
     @property
     # set mark list position in file
-    def mark_list_pos(self) -> int:
-        return -1
+    def mark_list(self) -> int:
+        return 0
 
-    def __int__(self, num_of_msgs: int, time_tag: int):
+    def __init__(self, num_of_msgs: int, time_tag: int):
         # Setting header file struct
         self.header_file_format: str = '<37sIL2Q'
 
@@ -28,6 +28,6 @@ class Header_RPF:
             self.init_string.encode('utf-8'),
             self.num_of_msgs,
             self.time_tag,
-            self.gap_list_pos,
-            self.mark_list_pos
+            self.gap_list,
+            self.mark_list
         )
