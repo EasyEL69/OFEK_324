@@ -1,6 +1,6 @@
 from src.Exalt_File.Markers_Tables.Entries.message_index_entry import Message_Index_Entry
 from src.Exalt_File.Markers_Tables.Entries.entry import Entry
-from src.Exalt_File.Markers_Tables.message_Index_table import First_Msg_Of_Type_Table
+from src.Exalt_File.Markers_Tables.first_msg_of_type_table import First_Msg_Of_Type_Table
 
 
 def tester_func_1():

@@ -1,9 +1,11 @@
 from typing import Optional
+from ..Exalt_File.message_ex import Msg_1553
 
 
 class Node:
-    def __init__(self, data):
-        self.data: any = data
+    def __init__(self, data, key):
+        self.data: Optional[Msg_1553] = data
+        self.key: any = key
         self.parent: Optional[Node] = None
         self.left: Optional[Node] = None
         self.right: Optional[Node] = None
@@ -14,18 +16,18 @@ class Splay_Tree:
         self.root: Optional[Node] = None
 
     # Search Node by Key
-    def search(self, root: Node, key: any) -> Optional[Node]:
+    def search(self, root: Optional[Node], key: any) -> Optional[Node]:
 
         # Key is not in tree
         if root is None:
             return None
 
         # key is in sub-left tree
-        if root.data > key:
+        if root.key > key:
             return self.search(root.left, key)
 
         # key is in sub-right tree
-        if root.data < key:
+        if root.key < key:
             return self.search(root.right, key)
 
         # key is founded
@@ -93,11 +95,13 @@ class Splay_Tree:
                 self.right_rotate(x.parent)
                 self.left_rotate(x.parent)
 
-    def splay(self, root: Node, key: any):
+    def splay(self, root: Optional[Node], key: any) -> Optional[Node]:
         founded_node = self.search(root, key)
 
         if founded_node:
             self.splay_node(founded_node)
+
+        return founded_node
 
     def in_order(self, root: Node):
         if root is not None:
@@ -105,14 +109,14 @@ class Splay_Tree:
             print(root.data, end=' ')
             self.in_order(root.right)
 
-    def insert(self, key):
-        node = Node(key)
+    def insert(self, data, key):
+        node = Node(data, key)
         y = None
         x = self.root
 
         while x is not None:
             y = x
-            if node.data < x.data:
+            if node.key < x.key:
                 x = x.left
             else:
                 x = x.right
@@ -121,10 +125,11 @@ class Splay_Tree:
         node.parent = y
         if y is None:
             self.root = node
-        elif node.data < y.data:
+        elif node.key < y.key:
             y.left = node
         else:
             y.right = node
+
         # splay the node
         self.splay_node(node)
 

@@ -127,7 +127,6 @@ class Msg_1553(Message):
             self.data_words: list[int] = [int(data_word, BASE_HEX) for data_word in data_words]
         else:
             self.data_words: list[int] = []
-            # TODO fix word count
 
         self.flags_1553 = flags_1553
         self.px_status = px_status

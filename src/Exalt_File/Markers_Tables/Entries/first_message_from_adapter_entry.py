@@ -1,5 +1,4 @@
 from src.Exalt_File.Markers_Tables.Entries.entry import Entry
-import src.constants as c
 import struct as s
 
 

@@ -1,8 +1,9 @@
 from src.Exalt_File.message_ex import Message
-import src.constants as c
 from src.Exalt_File.Markers_Tables.Entries.entry import Entry
 import struct as s
 from typing import Optional
+
+STDOUT_BUFFER_SIZE = 4100
 
 
 class Marker_Table(Message):
@@ -37,6 +38,13 @@ class Marker_Table(Message):
         self.entry_index += 1
         return True
 
+    def write_buffer(self):
+        if (self.entry_index + 1) * self.entry_size >= STDOUT_BUFFER_SIZE:
+            pass
+
+
+    # TODO: implement the entries array as np.array from
+    # TODO: use value.nbytes to evaluate the number of bytes that list is takes
     def pack(self) -> bytes:
         return super().pack() + s.pack(self.format,
                                        self.time_tag,

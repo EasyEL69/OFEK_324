@@ -1,4 +1,3 @@
-import src.constants as c
 import struct as s
 
 
