@@ -52,7 +52,7 @@ class RPF_file:
 
         with open(json_file_path, 'rb') as json_stream, open(msgs_file_path, 'wb') as msgs_ofstream:
 
-            # in this process we will calculate the offset of the files
+            # in this process we will calculate the offset of the files'
             # init offset
             file_offset = msgs_ofstream.tell()
 

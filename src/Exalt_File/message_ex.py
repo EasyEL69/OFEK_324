@@ -74,6 +74,9 @@ class Message:
                       self.offset_prev_msg_type or DEFAULT_VALUE
                       )
 
+    def get_size(self) -> int:
+        return s.calcsize(self.MESSAGE_FORMAT)
+
     def set_offset_to_next_msg(self, offset: int) -> None:
         self.offset_next_msg = offset
 

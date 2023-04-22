@@ -1,29 +1,42 @@
-from typing import Optional, Tuple
 import json
-import sys
+import os
 import pathlib
+import sys
+from tkinter import messagebox
+from typing import Tuple
+
+import ijson
 
 try:
     from src.parsing_ch10.Py106.MsgDecode1553 import Decode1553F1
     from src.parsing_ch10.Py106.time import Time
     import src.parsing_ch10.Py106.packet as packet
     import src.parsing_ch10.Py106.status as status
-    import src.constants as c
     from src.parsing_ch10.message_ch10 import Message
 except ImportError:
     raise ImportError
 
-CH_10_PATTERN = 'sample.c10'
-PARSED_JSON = 'parsed_1553_messages'
+
+def parser_json(json_file_path: str) -> Tuple[int, list[int]]:
+    num_of_msgs = 0
+    adapters: list[int] = []
+
+    with open(json_file_path, 'rb') as json_stream:
+        for record in ijson.items(json_stream, "item"):
+            num_of_msgs += 1
+            add_adapter(adapters, int(record['HEADER_CH10']['ADAPTER_ID'], 16))
+
+    return num_of_msgs, adapters
 
 
-def parsing_process(ch10_file_path: pathlib.Path, results_file_path: Optional[pathlib.Path] = None) -> None:
+def parser_c10(ch10_file_path: str) -> Tuple[int, list[int]]:
     """ inspired by an open src code parsing
                 Created on Jan 4, 2012
                 by author: rb45
             """
-    if results_file_path is None:
-        results_file_path = ch10_file_path.parent / (ch10_file_path.name.split('.', 2)[0] + '.json')
+
+    json_output_file_path = pathlib.Path().absolute().parent / 'output_files' / \
+                            (os.path.splitext(os.path.basename(ch10_file_path))[0] + '.json')
 
     # Make IRIG 106 library classes
     pkt_io = packet.IO()
@@ -33,16 +46,18 @@ def parsing_process(ch10_file_path: pathlib.Path, results_file_path: Optional[pa
     open_status = pkt_io.open(str(ch10_file_path), packet.FileMode.READ)
 
     if open_status != status.OK:
-        print(f"Error opening data file: {ch10_file_path}")
+        messagebox.showinfo("Process File - open file status", f"Error opening data file: {ch10_file_path}")
         sys.exit(1)
 
     # file is good to go. analyzing part
     time_sync_status = time_utils.sync_time(False, 0)
     if time_sync_status != status.OK:
-        print("Sync Status = %s" % status.Message(time_sync_status))
+        messagebox.showinfo("Process File - sync file status", "Sync Status = %s" % status.Message(time_sync_status))
         sys.exit(1)
 
-    num_msgs, adapters = parser_1553(pkt_io, decode1553, results_file_path)
+    num_msgs, adapters = parser_1553(pkt_io, decode1553, json_output_file_path)
+
+    return num_msgs, adapters
 
 
 def add_adapter(adapters: list[int], adapter_id: int):
@@ -78,9 +93,38 @@ def parser_1553(pkt_io, decode1553, file_json_file_path) -> Tuple[int, list[int]
     return num_of_msgs, adapters
 
 
-def main() -> None:
+'''def main() -> None:
     parsing_process(pathlib.Path().absolute().parent.parent / 'resources' / 'sample.c10')
 
 
 if __name__ == '__main__':
     main()
+'''
+
+'''def parsing_process(ch10_file_path: pathlib.Path, results_file_path: Optional[pathlib.Path] = None) -> None:
+    """ inspired by an open src code parsing
+                Created on Jan 4, 2012
+                by author: rb45
+            """
+    if results_file_path is None:
+        results_file_path = ch10_file_path.parent / (ch10_file_path.name.split('.', 2)[0] + '.json')
+
+    # Make IRIG 106 library classes
+    pkt_io = packet.IO()
+    time_utils = Time(pkt_io)
+    decode1553 = Decode1553F1(pkt_io)
+
+    open_status = pkt_io.open(str(ch10_file_path), packet.FileMode.READ)
+
+    if open_status != status.OK:
+        messagebox.showinfo("Process File", f"Error opening data file: {ch10_file_path}")
+        sys.exit(1)
+
+    # file is good to go. analyzing part
+    time_sync_status = time_utils.sync_time(False, 0)
+    if time_sync_status != status.OK:
+        print("Sync Status = %s" % status.Message(time_sync_status))
+        sys.exit(1)
+
+    num_msgs, adapters = parser_1553(pkt_io, decode1553, results_file_path)
+'''
