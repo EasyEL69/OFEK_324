@@ -1,9 +1,9 @@
 import struct as s
-from typing import Optional, Final
+from typing import Optional, Final, BinaryIO
 import functools
 
 BASE_HEX: Final[int] = 16
-DEFAULT_VALUE: Final[int] = 0xFFFFFFFF
+DEFAULT_VALUE: Final[int] = 0x00000000  # 0xFFFFFFFF
 
 
 def convert_string_to_integer():
@@ -57,6 +57,10 @@ class Message:
 
     # default_pack = convert_optional_none_to(DEFAULT_VALUE)(s.pack)
 
+    @property
+    def is_write_ready(self) -> bool:
+        return self.offset_next_msg and self.offset_next_msg_same_adapter and self.offset_next_msg_type
+
     def pack(self) -> bytes:
         return s.pack(self.MESSAGE_FORMAT,
                       self.msg_sts,
@@ -76,24 +80,6 @@ class Message:
 
     def get_size(self) -> int:
         return s.calcsize(self.MESSAGE_FORMAT)
-
-    def set_offset_to_next_msg(self, offset: int) -> None:
-        self.offset_next_msg = offset
-
-    def set_offset_to_prev_msg(self, offset: int) -> None:
-        self.offset_prev_msg = offset
-
-    def set_offset_next_msg_same_adapter(self, offset: int) -> None:
-        self.offset_next_msg_same_adapter = offset
-
-    def set_offset_prev_msg_same_adapter(self, offset: int) -> None:
-        self.offset_prev_msg_same_adapter = offset
-
-    def set_offset_next_msg_type(self, offset: int) -> None:
-        self.offset_next_msg_type = offset
-
-    def set_offset_prev_msg_type(self, offset: int) -> None:
-        self.offset_prev_msg_type = offset
 
 
 class Msg_1553(Message):
@@ -148,3 +134,16 @@ class Msg_1553(Message):
                                        *self.data_words,
                                        self.flags_1553
                                        )
+
+    def get_size(self) -> int:
+        return super().get_size() + s.calcsize(self.content_format)
+
+    def has_next_fill(self) -> bool:
+        return super().is_write_ready
+
+    def write_to_output_file(self, ofstream: BinaryIO, file_position: int):
+        if self.has_next_fill():
+            temp_pos = ofstream.tell()
+            ofstream.seek(file_position)
+            ofstream.write(self.pack())
+

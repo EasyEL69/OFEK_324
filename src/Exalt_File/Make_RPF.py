@@ -2,10 +2,8 @@ import pathlib
 import struct
 from dataclasses import dataclass
 from typing import Tuple, Optional, List, BinaryIO
-import os
 import ijson
-
-from src.Data_Structures.splay_tree import Splay_Tree
+from src.Data_Structures.splay_tree import Splay_Tree, Node_data_elements
 from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
 from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
 from src.Exalt_File.Markers_Tables.counts_Index_table import Counts_Index_Table
@@ -24,6 +22,14 @@ MESSAGE_INDEX_TABLE = 0
 FIRST_MSG_TYPE_TABLE = 1
 FIRST_FROM_ADAPTER_TABLE = 2
 COUNT_INDEX_TABLE = 3
+# --------------------------------------
+
+# --------------------------------------
+MESSAGE_1553 = 0
+FILE_POSITION = 1
+
+
+# --------------------------------------
 
 
 # creating data class for type-hint the data structure
@@ -39,6 +45,10 @@ class adapters_elements_type_hint:
     """Class for keeping track of an item in inventory."""
     last_form_adapter: Optional[Msg_1553] = None
     last_form_adapter_pos: Optional[int] = None
+
+
+def calculate_offset(current: int, last_position: int) -> int:
+    return current - last_position
 
 
 def create_exalt_msg(record: dict) -> Msg_1553:
@@ -66,7 +76,7 @@ def init_tables(time_tag: int, num_adapters: int) -> \
         Counts_Index_Table(time_tag)
 
 
-def body_rpf(input_path: pathlib.Path, time_tag: int, num_of_adapters: int, ofstream: BinaryIO) -> None:
+def file_tables_rpf(input_path: pathlib.Path, time_tag: int, num_of_adapters: int, ofstream: BinaryIO) -> None:
     tables = list(init_tables(time_tag, num_of_adapters))
     num_of_bytes = sum([table.get_size() for table in tables])
 
@@ -76,96 +86,115 @@ def body_rpf(input_path: pathlib.Path, time_tag: int, num_of_adapters: int, ofst
     # for padding in file
     ofstream.write(struct.pack(f"{num_of_bytes}x"))
 
-    with open(input_path, 'rb') as json_stream:
 
-        # -----------------------------------------------------------------
-        # need to remember the last msg
-        last_msg_in_general: last_msg_general_elements_type_hint = \
-            last_msg_general_elements_type_hint(last_msg=None, last_msg_pos=None)
+def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, table_list, max_eval_num_adapters: int):
+    # -----------------------------------------------------------------
+    # need to remember the last msg
+    last_msg_in_general: last_msg_general_elements_type_hint = \
+        last_msg_general_elements_type_hint(last_msg=None, last_msg_pos=None)
 
-        last_from_adapters: List[adapters_elements_type_hint] = \
-            [adapters_elements_type_hint(last_form_adapter=None, last_form_adapter_pos=None) for _ in
-             range(num_of_adapters)]
+    last_from_adapters: List[adapters_elements_type_hint] = \
+        [adapters_elements_type_hint(last_form_adapter=None, last_form_adapter_pos=None) for _ in
+         range(max_eval_num_adapters)]
 
-        # init splay tree for algorithm
-        msgs_type_splay_tree: Splay_Tree = Splay_Tree()
-        # -----------------------------------------------------------------
+    # init splay tree for algorithm
+    msgs_type_splay_tree: Splay_Tree = Splay_Tree()
+    # -----------------------------------------------------------------
 
-        # start iterating over the json file
-        for record in ijson.items(json_stream, "item"):
+    # start iterating over the json file
+    for record in ijson.items(json_stream, "item"):
 
-            part_messages_offset = ofstream.tell()
+        cur_position = ofstream.tell()
+        exalt_record: Msg_1553 = create_exalt_msg(record)
 
-            exalt_record: Msg_1553 = create_exalt_msg(record)
+        # allocate padding for current message in file
+        ofstream.write(struct.pack(f"{exalt_record.get_size()}x"))
 
-            # ADAPTER PART ------------------------------------------------------------------------------------------
-            # check if this msg is the first from adapter
-            if not last_from_adapters[exalt_record.adapter_id - 1].last_form_adapter:
+        # --------------------------------------------------------------------------------------
+        # linking last message to current message and update the last message
+        if last_msg_in_general.last_msg:
+            # there is a message before current message then we can link between them
 
-                # ---- YES! first message from adapter --------
-                tables[FIRST_FROM_ADAPTER_TABLE]. \
-                    add_entry(First_Message_From_Adapter_Entry(part_messages_offset, exalt_record.adapter_id))
+            last_msg_in_general.last_msg.offset_nex_msg = exalt_record.offset_prev_msg = \
+                calculate_offset(cur_position, last_msg_in_general.last_msg_pos)
 
-                # now that not the first message from adapter
-                last_from_adapters[exalt_record.adapter_id - 1].last_form_adapter = exalt_record
-                last_from_adapters[exalt_record.adapter_id - 1].last_form_adapter_pos = part_messages_offset
+        if last_msg_in_general.last_msg.is_write_ready:
+            temp_pos = ofstream.tell()
+            ofstream.seek(last_msg_in_general.last_msg_pos)
+            ofstream.write(last_msg_in_general.last_msg.pack())
+            ofstream.seek(temp_pos)
 
-            else:
-                # we have a message from this adapter, we are going to link it
-                last_from_adapters[exalt_record.adapter_id - 1].last_form_adapter. \
-                    offset_next_msg_same_adapter = part_messages_offset
+        # update the current message to be the last one that we get
+        last_msg_in_general.last_msg = exalt_record
+        last_msg_in_general.last_msg_pos = cur_position
 
-                exalt_record.offset_prev_msg_same_adapter = \
-                    last_from_adapters[exalt_record.adapter_id - 1].last_form_adapter_pos
+        # ----------------------------------------------------------------------------------------
 
-            # END ADAPTER PART --------------------------------------------------------------------------------------
+        # ADAPTER PART ------------------------------------------------------------------------------------------
+        # check if this msg is the first from adapter
+        if not last_from_adapters[exalt_record.adapter_id].last_form_adapter:
 
-            # MSG TYPE PART ------------------------------------------------------------------------------------------
+            # ---- YES! first message from adapter --------
+            tables[FIRST_FROM_ADAPTER_TABLE]. \
+                add_entry(First_Message_From_Adapter_Entry(cur_position, exalt_record.adapter_id))
 
-            # step 1: splay the type of the message we came across with (if type does not exist func will return None)
-            splayed_node = msgs_type_splay_tree.splay(root=msgs_type_splay_tree.root, key=exalt_record.cmd_word_1)
+            # now that not the first message from adapter
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter = exalt_record
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos = cur_position
 
-            # if Message Type is not in tree meaning this is first message from message type
-            if not splayed_node:
+        else:
+            # we have a message from this adapter, we are going to link it
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter. \
+                offset_next_msg_same_adapter = exalt_record.offset_prev_msg_same_adapter = \
+                calculate_offset(cur_position, last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos)
 
-                # adding type to table
-                tables[FIRST_MSG_TYPE_TABLE]. \
-                    add_entry(First_Message_Of_Type_Entry(part_messages_offset, exalt_record.cmd_word_1))
+            if last_from_adapters[exalt_record.adapter_id].last_form_adapter.is_write_ready:
+                ofstream.write(last_from_adapters[exalt_record.adapter_id].last_form_adapter.pack())
 
-                # insert message to tree
-                msgs_type_splay_tree.insert(data=exalt_record, key=exalt_record.cmd_word_1)
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter = exalt_record
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos = cur_position
 
-            # message type is already in tree, then it splayed up, and now we will extract the data and packing it
-            else:
-                last_msg_type = msgs_type_splay_tree.root.data
-                msgs_type_splay_tree.root.data = exalt_record
+        # END ADAPTER PART --------------------------------------------------------------------------------------
 
-                last_msg_type.offset_next_msg_type = part_messages_offset
-                msgs_type_splay_tree.root.data.offset_prev_msg_type = part_messages_offset
+        # MSG TYPE PART ------------------------------------------------------------------------------------------
+        # splay the type of the message we came across with (if type does not exist func will return None)
+        splayed_node = msgs_type_splay_tree.splay(root=msgs_type_splay_tree.root, key=exalt_record.cmd_word_1)
+
+        # if Message Type is not in tree meaning it is the first message from message type
+        if not splayed_node:
+
+            # adding type to table
+            tables[FIRST_MSG_TYPE_TABLE]. \
+                add_entry(First_Message_Of_Type_Entry(cur_position, exalt_record.cmd_word_1))
+
+            # insert message to tree
+            msgs_type_splay_tree.insert(Node_data_elements(data_1553=exalt_record, file_position=cur_position),
+                                        key=exalt_record.cmd_word_1)
+
+        # message type is already in tree, then it splayed up, and now we will extract the data and packing it
+        else:
+            last_msg_type_node_data: Node_data_elements = msgs_type_splay_tree.root.data
+            msgs_type_splay_tree.root.data = Node_data_elements(data_1553=exalt_record, file_position=cur_position)
+
+            # linking offset between 2 messages
+
+            last_msg_type_node_data.data_1553.offset_next_msg_type = \
+                msgs_type_splay_tree.root.data.data_1553.offset_prev_msg_type = \
+                calculate_offset(cur_position, last_msg_type_node_data.file_position)
+
+            if last_msg_type_node_data.data_1553.is_write_ready:
+                ofstream.write(last_msg_in_general.last_msg.pack())
+
+    # write the rest messages
 
 
-
-            # END MSG TYPE PART --------------------------------------------------------------------------------------
-
-            # linking last message to current message and update the last message
-            if last_msg_in_general.last_msg:
-                # there is a message before current message then we can link between them
-                last_msg_in_general.last_msg.offset_nex_msg = part_messages_offset
-                exalt_record.offset_prev_msg = last_msg_in_general.last_msg_pos
-
-            last_msg_in_general.last_msg = exalt_record
+        # END MSG TYPE PART --------------------------------------------------------------------------------------
 
 
 def rpf_process(json_path, file_name: str, num_of_msgs: int, data_stream_list: list[int], time_tag: int) -> None:
-
     rpf_path = pathlib.Path().absolute().parent / 'output_files' / f'{file_name}.rpf'
 
-    # rpf_path = pathlib.Path().absolute().parent.parent / 'output_files' / 'exalt_replay_file.rpf'
-
-
-    # input_path = pathlib.Path().absolute().parent.parent / 'resources' / 'sample.json'
     # ----------------------------------------------------------------------------------------------
-
     # start running over packing all data
     # ----------------------------------------------------------------------------------------------
 

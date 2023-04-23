@@ -1,10 +1,18 @@
 from typing import Optional
 from ..Exalt_File.message_ex import Msg_1553
+from dataclasses import dataclass
+
+
+@dataclass
+class Node_data_elements:
+    """Class for keeping track of an item in inventory."""
+    data_1553: Optional[Msg_1553] = None
+    file_position: Optional[int] = None
 
 
 class Node:
     def __init__(self, data, key):
-        self.data: Optional[Msg_1553] = data
+        self.data: Node_data_elements = data  # (Msg_1553, file_position)
         self.key: any = key
         self.parent: Optional[Node] = None
         self.left: Optional[Node] = None
