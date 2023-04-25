@@ -2,7 +2,9 @@ import pathlib
 import struct
 from dataclasses import dataclass
 from typing import Tuple, Optional, List, BinaryIO
+
 import ijson
+
 from src.Data_Structures.splay_tree import Splay_Tree, Node_data_elements
 from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
 from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
@@ -118,7 +120,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, table_list, max_eva
             last_msg_in_general.last_msg.offset_nex_msg = exalt_record.offset_prev_msg = \
                 calculate_offset(cur_position, last_msg_in_general.last_msg_pos)
 
-        if last_msg_in_general.last_msg.is_write_ready:
+        if last_msg_in_general.last_msg.is_write_ready():
             temp_pos = ofstream.tell()
             ofstream.seek(last_msg_in_general.last_msg_pos)
             ofstream.write(last_msg_in_general.last_msg.pack())
@@ -148,7 +150,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, table_list, max_eva
                 offset_next_msg_same_adapter = exalt_record.offset_prev_msg_same_adapter = \
                 calculate_offset(cur_position, last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos)
 
-            if last_from_adapters[exalt_record.adapter_id].last_form_adapter.is_write_ready:
+            if last_from_adapters[exalt_record.adapter_id].last_form_adapter.is_write_ready():
                 ofstream.write(last_from_adapters[exalt_record.adapter_id].last_form_adapter.pack())
 
             last_from_adapters[exalt_record.adapter_id].last_form_adapter = exalt_record
@@ -182,13 +184,12 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, table_list, max_eva
                 msgs_type_splay_tree.root.data.data_1553.offset_prev_msg_type = \
                 calculate_offset(cur_position, last_msg_type_node_data.file_position)
 
-            if last_msg_type_node_data.data_1553.is_write_ready:
+            if last_msg_type_node_data.data_1553.is_write_ready():
                 ofstream.write(last_msg_in_general.last_msg.pack())
 
     # write the rest messages
 
-
-        # END MSG TYPE PART --------------------------------------------------------------------------------------
+    # END MSG TYPE PART --------------------------------------------------------------------------------------
 
 
 def rpf_process(json_path, file_name: str, num_of_msgs: int, data_stream_list: list[int], time_tag: int) -> None:

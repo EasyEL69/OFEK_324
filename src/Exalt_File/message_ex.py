@@ -1,6 +1,6 @@
+import functools
 import struct as s
 from typing import Optional, Final, BinaryIO
-import functools
 
 BASE_HEX: Final[int] = 16
 DEFAULT_VALUE: Final[int] = 0x00000000  # 0xFFFFFFFF
@@ -58,7 +58,7 @@ class Message:
     # default_pack = convert_optional_none_to(DEFAULT_VALUE)(s.pack)
 
     @property
-    def is_write_ready(self) -> bool:
+    def has_all_next_fill(self) -> bool:
         return self.offset_next_msg and self.offset_next_msg_same_adapter and self.offset_next_msg_type
 
     def pack(self) -> bytes:
@@ -138,12 +138,14 @@ class Msg_1553(Message):
     def get_size(self) -> int:
         return super().get_size() + s.calcsize(self.content_format)
 
-    def has_next_fill(self) -> bool:
-        return super().is_write_ready
+    def is_write_ready(self) -> bool:
+        return super().has_all_next_fill
 
     def write_to_output_file(self, ofstream: BinaryIO, file_position: int):
-        if self.has_next_fill():
+        if self.is_write_ready():
             temp_pos = ofstream.tell()
+
             ofstream.seek(file_position)
             ofstream.write(self.pack())
 
+            ofstream.seek(temp_pos)

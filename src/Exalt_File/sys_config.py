@@ -9,6 +9,9 @@ class System_configuration:
         self.num_of_data_streams: int = len(adapters_id)
         self.list_of_data_streams: list[Adapter] = [Adapter(adapter_id) for adapter_id in adapters_id]
 
+    def get_size(self):
+        return s.calcsize('<I') + sum([data_stream.get_size() for data_stream in self.list_of_data_streams])
+
     def pack(self) -> bytes:
         # first we will pack the number of data streams
         packed_data: bytes = s.pack('<I', self.num_of_data_streams)
@@ -43,6 +46,9 @@ class Adapter:
     def format_struct(self) -> str:
         return "<i{len_name}si{len_type}s2H".format(len_name=len(self.muxbux_name),
                                                     len_type=len(self.TYPE))
+
+    def get_size(self) -> int:
+        return s.calcsize(self.format_struct)
 
     def pack(self) -> bytes:
         # Note: when using string buffer for packing make sure to encode the string before packing it with

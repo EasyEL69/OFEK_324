@@ -1,166 +1,312 @@
-import ijson
 import pathlib
-from typing import Optional, List
+import struct
 from dataclasses import dataclass
-from src.Exalt_File.header_RPF import Header_RPF
-from src.Exalt_File.sys_config import System_configuration
-from src.Exalt_File.message_ex import Msg_1553
-from src.Data_Structures.splay_tree import Splay_Tree
+from queue import Queue
+from typing import Tuple, Optional, List, BinaryIO, Union
+
+import ijson
+
+from src.Data_Structures.splay_tree import Splay_Tree, Node_data_elements
+from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
+from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
 from src.Exalt_File.Markers_Tables.counts_Index_table import Counts_Index_Table
-from src.Exalt_File.Markers_Tables.message_Index_table import Message_Index_Table
-from src.Exalt_File.Markers_Tables.first_msg_of_type_table import First_Msg_Of_Type_Table
 from src.Exalt_File.Markers_Tables.first_msg_from_adapter_table import First_Msg_From_Adapter_Table
+from src.Exalt_File.Markers_Tables.first_msg_of_type_table import First_Msg_Of_Type_Table
+from src.Exalt_File.Markers_Tables.message_Index_table import Message_Index_Table
+from src.Exalt_File.header_RPF import Header_RPF
+from src.Exalt_File.message_ex import Msg_1553
+from src.Exalt_File.sys_config import System_configuration
+
+# Constants for algorithm
+
+FILE_START_POSITION = 0
+NO_TRIGGER_LIST = NO_GAP_LIST = NO_MARK_LIST = 0
+# --------------------------------------
+MESSAGE_INDEX_TABLE = 0
+FIRST_MSG_TYPE_TABLE = 1
+FIRST_FROM_ADAPTER_TABLE = 2
+COUNT_INDEX_TABLE = 3
+# --------------------------------------
+TRIGGER_LIST_SIZE = struct.calcsize("<i")
+# --------------------------------------
+MESSAGE_1553 = 0
+FILE_POSITION = 1
+
+
+# --------------------------------------
 
 
 # creating data class for type-hint the data structure
 @dataclass
-class elements_type_hint:
+class last_msg_general_elements_type_hint:
+    """Class for keeping track of an item in inventory."""
+    last_msg: Optional[Msg_1553] = None
+    last_msg_pos: Optional[int] = None
+
+
+@dataclass
+class adapters_elements_type_hint:
     """Class for keeping track of an item in inventory."""
     last_form_adapter: Optional[Msg_1553] = None
-    splay_tree: Optional[Splay_Tree] = None
+    last_form_adapter_pos: Optional[int] = None
 
 
-class RPF_file:
-    # constants for file names
-    FILE_MSGS_NAME = 'all_msgs.rpf'
+@dataclass
+class queue_item:
+    msg_1553: Optional[Msg_1553] = None
+    file_position: Optional[int] = None
 
-    MESSAGE_INDEX_TABLE = 0
-    FIRST_MSG_TYPE_TABLE = 1
-    FIRST_FROM_ADAPTER_TABLE = 2
-    COUNT_INDEX_TABLE = 3
 
-    @staticmethod
-    def create_exalt_msg(record: dict, table_type: int) -> Msg_1553:
-        return Msg_1553(
-            record['HEADER_1553']['COMMAND_WORD_1']['VALUE'],
-            record['HEADER_1553']['COMMAND_WORD_2']['VALUE'],
-            record['HEADER_1553']['STATUS_WORD_1'],
-            record['HEADER_1553']['STATUS_WORD_2'],
-            record['CONTENT_1553']['DATA_WORDS'],
-            record['HEADER_CH10']['ADAPTER_ID'],
-            table_type,
-            record['HEADER_1553']['TIME_TAG'],
-            record['HEADER_CH10']['SERIAL'],
-            record['HEADER_1553']['WORD_COUNT'] * 2,
-            record['HEADER_CH10']['HEADER_FLAGS']
-        )
+def calculate_offset(current: int, last_position: int) -> int:
+    return current - last_position
 
-    def exalt_process(self, json_file_path: pathlib.Path, msgs_file_path: Optional[pathlib.Path] = None) -> None:
 
-        if msgs_file_path is None:
-            msgs_file_path = json_file_path.parent / self.FILE_MSGS_NAME
+def create_exalt_msg(record: dict) -> Msg_1553:
+    return Msg_1553(
+        record['HEADER_1553']['COMMAND_WORD_1']['VALUE'],  # first command word
+        record['HEADER_1553']['COMMAND_WORD_2']['VALUE'],  # second command word (maybe doesn't exist in message)
+        record['HEADER_1553']['STATUS_WORD_1'],  # first status word (exist!)
+        record['HEADER_1553']['STATUS_WORD_2'],  # second status word (maybe doesn't exist in message)
+        record['CONTENT_1553']['DATA_WORDS'],  # all data words in message
+        record['HEADER_CH10']['ADAPTER_ID'],  # adapter id
+        record['HEADER_1553']['COMMAND_WORD_1']['VALUE'],  # The msg_type is also the command word
+        record['HEADER_1553']['TIME_TAG'],  # Time Tag of a message
+        record['HEADER_CH10']['SERIAL'],  # serial number of a message
+        record['HEADER_1553']['WORD_COUNT'] * 2,  # num of byte were getting according to command word
+        record['HEADER_CH10']['HEADER_FLAGS']  # header message flags we get in header package
+    )
 
-        with open(json_file_path, 'rb') as json_stream, open(msgs_file_path, 'wb') as msgs_ofstream:
 
-            # in this process we will calculate the offset of the files'
-            # init offset
-            file_offset = msgs_ofstream.tell()
+def init_tables(time_tag: int, num_adapters: int) -> \
+        Tuple[Message_Index_Table, First_Msg_Of_Type_Table, First_Msg_From_Adapter_Table, Counts_Index_Table]:
+    return \
+        Message_Index_Table(time_tag), \
+        First_Msg_Of_Type_Table(time_tag, 2 ^ 16), \
+        First_Msg_From_Adapter_Table(time_tag, num_adapters), \
+        Counts_Index_Table(time_tag)
 
-            # need to remember the last msg
-            last_msg_in_general: Optional[Msg_1553] = None
 
-            # first msg of adapter list
-            lst_data_streams: List[Optional[Msg_1553]] = [None] * 9
+# version 1
+def write_queue(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
+    # save file position to return to current position in file
+    saved_position: int = ofstream.tell()
 
-            # start iterating over the json file
-            for record in ijson.items(json_stream, "item"):
+    # we want to do writing process to file while queue is not empty
+    # and the first msg in queue is ready to be writen
+    while (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
+        # dequeue msg
+        item: queue_item = queue_buffer.get()
 
-                exalt_record = self.create_exalt_msg(record, self.MESSAGE_INDEX_TABLE)
+        # write packed msg data in correct file position
+        ofstream.seek(item.file_position)
+        ofstream.write(item.msg_1553.pack())
 
-                # linking between messages that sending in a chronology
-                if last_msg_in_general:
-                    last_msg_in_general.offset_nex_msg = exalt_record
-                    exalt_record.offset_prev_msg = last_msg_in_general
-                    last_msg_in_general = exalt_record
+    # return file pointer to current place before function
+    ofstream.seek(saved_position)
 
-                if not self.data_stream_list_of_splay_tree[exalt_record.adapter_id].last_form_adapter:
 
-                    # This is the first message of this adapter
-                    lst_data_streams[exalt_record.adapter_id] = exalt_record
+# version 2
+def write_queue_by_order(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
+    # save file position to return to current position in file
+    saved_position: int = ofstream.tell()
 
-                    # this is "Last message from adapter" and creating the splay tree
-                    self.data_stream_list_of_splay_tree[exalt_record.adapter_id].last_form_adapter = exalt_record
-                    self.data_stream_list_of_splay_tree[exalt_record.adapter_id].splay_tree = Splay_Tree()
+    # we want to do writing process to file while queue is not empty
+    # and the first msg in queue is ready to be writen
+    if (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
+        item: queue_item = queue_buffer.get()
+        ofstream.seek(item.file_position)
+        while (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
+            # dequeue msg
+            item: queue_item = queue_buffer.get()
+            # write packed msg data in correct order file position
+            ofstream.write(item.msg_1553.pack())
 
-                else:
+    ofstream.seek(saved_position)
 
-                    # we found the next message of this current msg from same adapter
-                    self.data_stream_list_of_splay_tree[exalt_record.adapter_id] \
-                        .last_form_adapter.offset_next_msg_same_adapter = exalt_record
 
-                    # updating the previous msg link of the
-                    exalt_record.offset_prev_msg_same_adapter = \
-                        self.data_stream_list_of_splay_tree[exalt_record.adapter_id].last_form_adapter
+# version 3
+def write_msg_buffer(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
+    # save file position to return to current position in file
+    saved_position: int = ofstream.tell()
 
-                    # now after linking this is the last message from adapter
-                    self.data_stream_list_of_splay_tree[exalt_record.adapter_id] \
-                        .last_form_adapter = exalt_record
+    if (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
+        item: queue_item = queue_buffer.get()
+        ofstream.seek(item.file_position)
+        ofstream.write(item.msg_1553.pack())
+        recursive_write_queue(ofstream, queue_buffer)
 
-                    # searching for "new" command word
-                    searched_node = self.data_stream_list_of_splay_tree[exalt_record.adapter_id]. \
-                        splay_tree.splay(self.data_stream_list_of_splay_tree[exalt_record.adapter_id].splay_tree,
-                                         key=exalt_record.cmd_word_1)
+    ofstream.seek(saved_position)
 
-                    # if after searching we did not come across with the searched node we will insert it and splay it up
-                    if not searched_node:
-                        self.data_stream_list_of_splay_tree[exalt_record.adapter_id].splay_tree. \
-                            insert(exalt_record, key=exalt_record.cmd_word_1)
-                    else:
-                        # the searched node has been founded, now we are making the links between msgs
-                        self.data_stream_list_of_splay_tree[exalt_record.adapter_id].splay_tree.root. \
-                            data.offset_next_msg_type = exalt_record
 
-                        exalt_record.offset_prev_msg_type = self.data_stream_list_of_splay_tree[
-                            exalt_record.adapter_id].splay_tree.root.data
+def recursive_write_queue(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
+    if not queue_buffer.empty() and queue_buffer.queue[0].msg_1553.is_write_ready():
+        # dequeue msg
+        item: queue_item = queue_buffer.get()
+        # write packed msg data in correct file position
+        ofstream.write(item.msg_1553.pack())
+        recursive_write_queue(ofstream, queue_buffer)
 
-                        # TODO: write root to file
 
-                        # now we will update current data by updating the current message in root
-                        # Note: when we are doing this all the fields are full
-                        self.data_stream_list_of_splay_tree[exalt_record.adapter_id].splay_tree.root. \
-                            data = exalt_record
+def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, max_eval_num_adapters: int) -> List:
+    # -----------------------------------------------------------------
+    # need to remember the last msg
+    last_msg_in_general: last_msg_general_elements_type_hint = \
+        last_msg_general_elements_type_hint(last_msg=None, last_msg_pos=None)
 
-    def __init__(self, num_of_msgs: int, time_tag: int, data_stream_list: list[int]):
-        # creating path for rpf file
-        self.rpf_path = pathlib.Path().absolute().parent.parent / 'output_files' / 'exalt_replay_file'
+    last_from_adapters: List[adapters_elements_type_hint] = \
+        [adapters_elements_type_hint(last_form_adapter=None, last_form_adapter_pos=None) for _ in
+         range(max_eval_num_adapters)]
 
-        # ----------------------------------------------------------------------------------------------
-        # allocating splay tree for all messages for each adapter:
-        # list[(last message from adapter ,adapter splay tree of msg types)] * 8 (Note:[1-8])
-        self.data_stream_list_of_splay_tree: List[elements_type_hint] = \
-            [elements_type_hint(last_form_adapter=None, splay_tree=None) for _ in range(9)]
-        # ----------------------------------------------------------------------------------------------
+    # init splay tree for algorithm
+    msgs_type_splay_tree: Splay_Tree = Splay_Tree()
 
-        # ----------------------------------------------------------------------------------------------
-        # creating structures for rpf file!'
-        self.head_rpf: Header_RPF = Header_RPF(num_of_msgs, time_tag)
-        self.sys_config: System_configuration = System_configuration(data_stream_list)
+    # to prevent large file seeks as many as we can
+    msgs_queue_to_write: Queue[Optional[queue_item]] = Queue()
+    # -----------------------------------------------------------------
 
-        # markers tables structures!!!
-        self.first_message_from_adapter_table = First_Msg_From_Adapter_Table(time_tag, len(data_stream_list))
+    # start iterating over the json file
+    for record in ijson.items(json_stream, "item"):
 
-        # Probability of types of command words that will appear for the first time
-        # in this table is about 16000 different command words
-        self.first_message_from_msg_type = First_Msg_Of_Type_Table(time_tag, num_of_entries=16000)
+        # --------------------------------------------------------------------------------------
+        # save current message file position and making its object
+        cur_position = ofstream.tell()
+        exalt_record: Msg_1553 = create_exalt_msg(record)
 
-        self.message_index_table = Message_Index_Table(time_tag, num_of_msgs)
-        self.count_index_table = Counts_Index_Table(time_tag, num_of_msgs)
-        # ----------------------------------------------------------------------------------------------
+        # adding new message for queue to sequence writing as much as we can
+        msgs_queue_to_write.put(queue_item(msg_1553=exalt_record, file_position=cur_position))
 
-        # ----------------------------------------------------------------------------------------------
-        # start main process
-        self.exalt_process(pathlib.Path().absolute().parent.parent / 'resources' / 'sample.json')
-        # ----------------------------------------------------------------------------------------------
+        # allocate padding for current message in file
+        ofstream.seek(exalt_record.get_size(), 1)
+        # --------------------------------------------------------------------------------------
 
-    def write_bytes(self, path_to_rpf: pathlib.Path):
-        with open(path_to_rpf, 'wb+') as ofstream:
-            ofstream.write(self.head_rpf.to_pack())
-            ofstream.write((self.sys_config.pack()))
-            ofstream.write(bytes(0))  # no trigger list
+        # --------------------------------------------------------------------------------------
+        # linking last message to current message and update the last message
+        if last_msg_in_general.last_msg:
+            # there is a message before current message then we can link between them
+
+            last_msg_in_general.last_msg.offset_nex_msg = exalt_record.offset_prev_msg = \
+                calculate_offset(cur_position, last_msg_in_general.last_msg_pos)
+
+        if last_msg_in_general.last_msg.is_write_ready():
+            write_queue(ofstream, msgs_queue_to_write)
+
+        # update the current message to be the last one that we get
+        last_msg_in_general.last_msg = exalt_record
+        last_msg_in_general.last_msg_pos = cur_position
+        # ----------------------------------------------------------------------------------------
+
+        # ADAPTER PART ------------------------------------------------------------------------------------------
+        # check if this msg is the first from adapter
+        if not last_from_adapters[exalt_record.adapter_id].last_form_adapter:
+
+            # ---- YES! first message from adapter --------
+            marker_table_list[FIRST_FROM_ADAPTER_TABLE]. \
+                add_entry(First_Message_From_Adapter_Entry(cur_position, exalt_record.adapter_id))
+
+            # now that not the first message from adapter
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter = exalt_record
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos = cur_position
+
+        else:
+            # we have a message from this adapter, we are going to link it
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter. \
+                offset_next_msg_same_adapter = exalt_record.offset_prev_msg_same_adapter = \
+                calculate_offset(cur_position, last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos)
+
+            if last_from_adapters[exalt_record.adapter_id].last_form_adapter.is_write_ready():
+                write_queue(ofstream, msgs_queue_to_write)
+
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter = exalt_record
+            last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos = cur_position
+
+        # END ADAPTER PART --------------------------------------------------------------------------------------
+
+        # MSG TYPE PART ------------------------------------------------------------------------------------------
+        # splay the type of the message we came across with (if type does not exist func will return None)
+        splayed_node = msgs_type_splay_tree.splay(root=msgs_type_splay_tree.root, key=exalt_record.cmd_word_1)
+
+        # if Message Type is not in tree meaning it is the first message from message type
+        if not splayed_node:
+
+            # adding type to table
+            marker_table_list[FIRST_MSG_TYPE_TABLE]. \
+                add_entry(First_Message_Of_Type_Entry(cur_position, exalt_record.cmd_word_1))
+
+            # insert message to tree
+            msgs_type_splay_tree.insert(Node_data_elements(data_1553=exalt_record, file_position=cur_position),
+                                        key=exalt_record.cmd_word_1)
+
+        # message type is already in tree, then it splayed up, and now we will extract the data and packing it
+        else:
+            last_msg_type_node_data: Node_data_elements = msgs_type_splay_tree.root.data
+            msgs_type_splay_tree.root.data = Node_data_elements(data_1553=exalt_record, file_position=cur_position)
+
+            # linking offset between 2 messages
+
+            last_msg_type_node_data.data_1553.offset_next_msg_type = \
+                msgs_type_splay_tree.root.data.data_1553.offset_prev_msg_type = \
+                calculate_offset(cur_position, last_msg_type_node_data.file_position)
+
+            if last_msg_type_node_data.data_1553.is_write_ready():
+                write_queue(ofstream, msgs_queue_to_write)
+
+    # END MSG TYPE PART --------------------------------------------------------------------------------------
+
+    # TODO: write the rest messages
+    return marker_table_list
+
+
+def write_footer(output_stream: BinaryIO) -> Tuple[int, int]:
+    gap_list_pos = output_stream.tell()
+    output_stream.write(struct.pack("<I", NO_GAP_LIST))
+
+    mark_list_pos = output_stream.tell()
+    output_stream.write(struct.pack("<I", NO_MARK_LIST))
+
+    return gap_list_pos, mark_list_pos
+
+
+def rpf_process(json_path, file_name: str, num_of_msgs: int, data_stream_list: list[int], time_tag: int) -> None:
+    rpf_path = pathlib.Path().absolute().parent / 'output_files' / f'{file_name}.rpf'
+
+    # ----------------------------------------------------------------------------------------------
+    # start running over packing all data
+    # ----------------------------------------------------------------------------------------------
+
+    with open(rpf_path, 'wb') as output_stream, open(json_path, 'rb') as input_stream:
+        header_output_file: Header_RPF = Header_RPF(num_of_msgs, time_tag)
+        lst_adapters_in_system: System_configuration = System_configuration(data_stream_list)
+        marker_tables: List[Union[Message_Index_Table,
+                                  First_Msg_Of_Type_Table,
+                                  First_Msg_From_Adapter_Table,
+                                  Counts_Index_Table]] = \
+            list(init_tables(time_tag, len(data_stream_list)))
+
+        bytes_to_seek = header_output_file.get_size() + lst_adapters_in_system.get_size() + TRIGGER_LIST_SIZE + sum(
+            [marker_table.get_size() for marker_table in marker_tables])
+
+        # for padding in file
+        output_stream.seek(bytes_to_seek, 1)
+
+        marker_tables = rpf_algorithm(input_stream, output_stream, marker_tables, max(data_stream_list))
+
+        gap_list_pos, mark_list_pos = write_footer(output_stream)
+
+        output_stream.seek(FILE_START_POSITION)
+
+        header_output_file.set_gap_list_pos(gap_list_pos)
+        header_output_file.set_mark_list_pos(mark_list_pos)
+
+        output_stream.write(header_output_file.to_pack())
+        output_stream.write(lst_adapters_in_system.pack())
+        output_stream.write(struct.pack("<i", NO_TRIGGER_LIST))
+        output_stream.write(sum([marker_table.pack() for marker_table in marker_tables]))
+
+    # ----------------------------------------------------------------------------------------------
 
 
 def main():
-    RPF_file(30, 65453121531, [1, 2, 3, 5])
+    print(pathlib.Path().absolute().parent.parent / 'resources' / 'sample.json')
 
 
 if __name__ == '__main__':
