@@ -35,21 +35,21 @@ QUEUE_MAX_SIZE = 100
 
 # creating data class for type-hint the data structure
 @dataclass
-class last_msg_general_elements_type_hint:
+class LastMsgGeneral:
     """Class for keeping track of an item in inventory."""
     last_msg: Optional[Msg_1553] = None
     last_msg_pos: Optional[int] = None
 
 
 @dataclass
-class adapters_elements_type_hint:
+class AdaptersElements:
     """Class for keeping track of an item in inventory."""
     last_form_adapter: Optional[Msg_1553] = None
     last_form_adapter_pos: Optional[int] = None
 
 
 @dataclass
-class queue_item:
+class QueueItem:
     msg_1553: Optional[Msg_1553] = None
     file_position: Optional[int] = None
 
@@ -83,146 +83,23 @@ def init_tables(time_tag: int, num_adapters: int) -> \
         Counts_Index_Table(time_tag)
 
 
-# version 1
-def write_queue(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    # save file position to return to current position in file
-    saved_position: int = ofstream.tell()
-
-    # we want to do writing process to file while queue is not empty
-    # and the first msg in queue is ready to be writen
-    while (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
-        # dequeue msg
-        item: queue_item = queue_buffer.get()
-
-        # write packed msg data in correct file position
-        ofstream.seek(item.file_position)
-        ofstream.write(item.msg_1553.pack())
-
-    # return file pointer to current place before function
-    ofstream.seek(saved_position)
 
 
-# version 2
-def write_queue_by_order(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    # save file position to return to current position in file
-    saved_position: int = ofstream.tell()
 
-    # we want to do writing process to file while queue is not empty
-    # and the first msg in queue is ready to be writen
-    if (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
-        item: queue_item = queue_buffer.get()
-        ofstream.seek(item.file_position)
-        while (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
-            # dequeue msg
-            item: queue_item = queue_buffer.get()
-            # write packed msg data in correct order file position
-            ofstream.write(item.msg_1553.pack())
-
-    ofstream.seek(saved_position)
-
-
-# version 3
-def write_msg_buffer(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    # save file position to return to current position in file
-    saved_position: int = ofstream.tell()
-
-    if (not queue_buffer.empty()) and queue_buffer.queue[0].msg_1553.is_write_ready():
-        item: queue_item = queue_buffer.get()
-        ofstream.seek(item.file_position)
-        ofstream.write(item.msg_1553.pack())
-        recursive_write_queue(ofstream, queue_buffer)
-
-    ofstream.seek(saved_position)
-
-
-def recursive_write_queue(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    if not queue_buffer.empty() and queue_buffer.queue[0].msg_1553.is_write_ready():
-        # dequeue msg
-        item: queue_item = queue_buffer.get()
-        # write packed msg data in correct file position
-        ofstream.write(item.msg_1553.pack())
-        recursive_write_queue(ofstream, queue_buffer)
-
-
-# ver 4
-def is_continues(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]) -> bool:
-    return (not queue_buffer.empty()) and\
-        (queue_buffer.queue[0].msg_1553.is_write_ready()) and\
-        (queue_buffer.queue[0].file_position == ofstream.tell())
-
-
-def write_continuous_buffer(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    while is_continues(ofstream, queue_buffer):
-        # write packed msg data in correct order file position
-        ofstream.write(queue_buffer.get().msg_1553.pack())
-
-
-# vr 5
-def send_queue_to_rpf1(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    saved_position: int = ofstream.tell()
-
-    if not queue_buffer.empty() and not queue_buffer.queue[0].msg_1553.is_write_ready():
-        flag_item = queue_buffer.get()
-        queue_buffer.put(flag_item)
-
-        while not queue_buffer.empty() and not queue_buffer.queue[0].msg_1553.is_write_ready():
-            if queue_buffer.queue[0] != flag_item:
-                queue_buffer.put(queue_buffer.get())
-            else:
-                # ending to scann over all the queue
-                return
-
-    while not queue_buffer.empty() and queue_buffer.queue[0].msg_1553.is_write_ready():
-        item: queue_item = queue_buffer.get()
-        if item.file_position != ofstream.tell():
-            ofstream.seek(item.file_position)
-        ofstream.write(item.msg_1553.pack())
-
-    ofstream.seek(saved_position)
-
-
-# vr 6
-def send_queue_to_rpf(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
-    saved_position: int = ofstream.tell()
-
-    done_circle = False
-    while not queue_buffer.empty() and not done_circle:
-
-        while not queue_buffer.empty() and queue_buffer.queue[0].msg_1553.is_write_ready():
-            item: queue_item = queue_buffer.get()
-            if item.file_position != ofstream.tell():
-                ofstream.seek(item.file_position)
-            ofstream.write(item.msg_1553.pack())
-
-        if not queue_buffer.empty():
-            flag_item = queue_buffer.get()
-            queue_buffer.put(flag_item)
-            while not queue_buffer.empty() and not queue_buffer.queue[0].msg_1553.is_write_ready() and not done_circle:
-                if queue_buffer.queue[0] != flag_item:
-                    queue_buffer.put(queue_buffer.get())
-                else:
-                    done_circle = True
-
-    ofstream.seek(saved_position)
-
-
-def send_queue_to_rpf2(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_item]]):
+def send_queue_to_rpf2(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem]]):
     saved_position: int = ofstream.tell()
 
     flag_item = None
     while not queue_buffer.empty() and flag_item is not queue_buffer.queue[0]:
-        item: queue_item = queue_buffer.get()
+        item: QueueItem = queue_buffer.get()
 
         if item.msg_1553.is_write_ready():
             if item.file_position != ofstream.tell():
                 ofstream.seek(item.file_position)
             ofstream.write(item.msg_1553.pack())
-
-        elif flag_item is not None:
-            queue_buffer.put(item)
-
         else:
-            flag_item = item
+            if flag_item is not None:
+                flag_item = item
             queue_buffer.put(flag_item)
 
     ofstream.seek(saved_position)
@@ -231,18 +108,18 @@ def send_queue_to_rpf2(ofstream: BinaryIO, queue_buffer: Queue[Optional[queue_it
 def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, max_eval_num_adapters: int) -> List:
     # -----------------------------------------------------------------
     # need to remember the last msg
-    last_msg_in_general: last_msg_general_elements_type_hint = \
-        last_msg_general_elements_type_hint(last_msg=None, last_msg_pos=None)
+    last_msg_in_general: LastMsgGeneral = \
+        LastMsgGeneral(last_msg=None, last_msg_pos=None)
 
-    last_from_adapters: List[adapters_elements_type_hint] = \
-        [adapters_elements_type_hint(last_form_adapter=None, last_form_adapter_pos=None) for _ in
+    last_from_adapters: List[AdaptersElements] = \
+        [AdaptersElements(last_form_adapter=None, last_form_adapter_pos=None) for _ in
          range(max_eval_num_adapters)]
 
     # init splay tree for algorithm
     msgs_type_splay_tree: SplayTree = SplayTree()
 
     # to prevent large file seeks as many as we can
-    msgs_queue_to_write: Queue[Optional[queue_item]] = Queue(QUEUE_MAX_SIZE)
+    msgs_queue_to_write: Queue[Optional[QueueItem]] = Queue(QUEUE_MAX_SIZE)
     # -----------------------------------------------------------------
 
     # start iterating over the json file
@@ -254,7 +131,10 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
         exalt_record: Msg_1553 = create_exalt_msg(record)
 
         # adding new message for queue to sequence writing as much as we can
-        msgs_queue_to_write.put(queue_item(msg_1553=exalt_record, file_position=cur_position))
+        if msgs_queue_to_write.full():
+            send_queue_to_rpf2(ofstream, msgs_queue_to_write)
+
+        msgs_queue_to_write.put(QueueItem(msg_1553=exalt_record, file_position=cur_position))
 
         # allocate padding for current message in file
         ofstream.seek(exalt_record.get_size(), 1)
@@ -267,9 +147,6 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
 
             last_msg_in_general.last_msg.offset_nex_msg = exalt_record.offset_prev_msg = \
                 calculate_offset(cur_position, last_msg_in_general.last_msg_pos)
-
-        if last_msg_in_general.last_msg.is_write_ready():
-            write_queue(ofstream, msgs_queue_to_write)
 
         # update the current message to be the last one that we get
         last_msg_in_general.last_msg = exalt_record
@@ -293,9 +170,6 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
             last_from_adapters[exalt_record.adapter_id].last_form_adapter. \
                 offset_next_msg_same_adapter = exalt_record.offset_prev_msg_same_adapter = \
                 calculate_offset(cur_position, last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos)
-
-            if last_from_adapters[exalt_record.adapter_id].last_form_adapter.is_write_ready():
-                write_queue(ofstream, msgs_queue_to_write)
 
             last_from_adapters[exalt_record.adapter_id].last_form_adapter = exalt_record
             last_from_adapters[exalt_record.adapter_id].last_form_adapter_pos = cur_position
@@ -327,9 +201,6 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
             last_msg_type_node_data.data_1553.offset_next_msg_type = \
                 msgs_type_splay_tree.root.data.data_1553.offset_prev_msg_type = \
                 calculate_offset(cur_position, last_msg_type_node_data.file_position)
-
-            if last_msg_type_node_data.data_1553.is_write_ready():
-                write_queue(ofstream, msgs_queue_to_write)
 
     # END MSG TYPE PART --------------------------------------------------------------------------------------
 

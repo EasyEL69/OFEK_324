@@ -5,7 +5,7 @@ from typing import Tuple, Optional, List, BinaryIO
 
 import ijson
 
-from src.Data_Structures.splay_tree import Splay_Tree, Node_data_elements
+from src.Data_Structures.splaytree import SplayTree, Node_data_elements
 from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
 from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
 from src.Exalt_File.Markers_Tables.counts_Index_table import Counts_Index_Table
@@ -100,7 +100,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, table_list, max_eva
          range(max_eval_num_adapters)]
 
     # init splay tree for algorithm
-    msgs_type_splay_tree: Splay_Tree = Splay_Tree()
+    msgs_type_splay_tree: SplayTree = SplayTree()
     # -----------------------------------------------------------------
 
     # start iterating over the json file

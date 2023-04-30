@@ -19,7 +19,7 @@ class Node:
         self.right: Optional[Node] = None
 
 
-class Splay_Tree:
+class SplayTree:
     def __init__(self):
         self.root: Optional[Node] = None
 
