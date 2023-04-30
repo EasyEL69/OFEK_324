@@ -83,10 +83,7 @@ def init_tables(time_tag: int, num_adapters: int) -> \
         Counts_Index_Table(time_tag)
 
 
-
-
-
-def send_queue_to_rpf2(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem]]):
+def send_queue_to_rpf(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem]]):
     saved_position: int = ofstream.tell()
 
     flag_item = None
@@ -132,7 +129,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
 
         # adding new message for queue to sequence writing as much as we can
         if msgs_queue_to_write.full():
-            send_queue_to_rpf2(ofstream, msgs_queue_to_write)
+            send_queue_to_rpf(ofstream, msgs_queue_to_write)
 
         msgs_queue_to_write.put(QueueItem(msg_1553=exalt_record, file_position=cur_position))
 
