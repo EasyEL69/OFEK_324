@@ -4,7 +4,8 @@ from pathlib import Path
 from tkinter import filedialog
 from tkinter import messagebox
 from src.parsing_ch10.parser_1553 import parser_c10, parser_json
-from src.Exalt_File.Make_RPF import rpf_process
+# from src.Exalt_File.Make_RPF import rpf_process
+from src.Exalt_File.RPF import rpf_process
 
 
 class UI:
@@ -72,23 +73,25 @@ class UI:
 
     @staticmethod
     def c10_to_rpf(file_path):
-        parsed_data = parser_c10(file_path)
+        num_of_msgs, adapters_list = parser_c10(file_path)
 
         rpf_process(
             Path().absolute().parent / 'output_files' / (os.path.splitext(os.path.basename(file_path))[0] + '.json'),
             os.path.splitext(os.path.basename(file_path))[0],
-            *parsed_data,
+            num_of_msgs,
+            adapters_list,
             int(os.path.getctime(file_path))
         )
 
     @staticmethod
     def json_to_rpf(file_path):
-        parsed_data = parser_json(file_path)
+        num_of_msgs, adapters_list = parser_json(file_path)
 
         rpf_process(
             file_path,
             os.path.splitext(os.path.basename(file_path))[0],
-            *parsed_data,
+            num_of_msgs,
+            adapters_list,
             int(os.path.getctime(file_path))
         )
 

@@ -1,12 +1,14 @@
 import pathlib
 import struct
+import sys
 from dataclasses import dataclass
 from queue import Queue
+from tkinter import messagebox
 from typing import Tuple, Optional, List, BinaryIO, Union
 
 import ijson
 
-from src.Data_Structures.splaytree import SplayTree, Node_data_elements
+from src.Data_Structures.splaytree import SplayTree, Node, Node_data_elements
 from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
 from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
 from src.Exalt_File.Markers_Tables.counts_Index_table import Counts_Index_Table
@@ -20,7 +22,7 @@ from src.Exalt_File.sys_config import System_configuration
 # Constants for algorithm
 
 FILE_START_POSITION = 0
-NO_TRIGGER_LIST = NO_GAP_LIST = NO_MARK_LIST = 0
+NO_TRIGGER_LIST = NO_GAP_LIST = NO_MARK_LIST = NO_POINTER = 0
 # --------------------------------------
 MESSAGE_INDEX_TABLE = 0
 FIRST_MSG_TYPE_TABLE = 1
@@ -30,6 +32,8 @@ COUNT_INDEX_TABLE = 3
 TRIGGER_LIST_SIZE = struct.calcsize("<i")
 # --------------------------------------
 QUEUE_MAX_SIZE = 100
+
+
 # --------------------------------------
 
 
@@ -95,11 +99,22 @@ def send_queue_to_rpf(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem
                 ofstream.seek(item.file_position)
             ofstream.write(item.msg_1553.pack())
         else:
-            if flag_item is not None:
+            if flag_item is None:
                 flag_item = item
-            queue_buffer.put(flag_item)
+            queue_buffer.put(item)
 
     ofstream.seek(saved_position)
+
+
+def fill_none_pointer(root: Optional[Node]):
+
+    if root is None:
+        return
+
+    root.data.data_1553.offset_next_msg_type = NO_POINTER
+
+    fill_none_pointer(root.left)
+    fill_none_pointer(root.right)
 
 
 def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, max_eval_num_adapters: int) -> List:
@@ -110,7 +125,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
 
     last_from_adapters: List[AdaptersElements] = \
         [AdaptersElements(last_form_adapter=None, last_form_adapter_pos=None) for _ in
-         range(max_eval_num_adapters)]
+         range(max_eval_num_adapters + 1)]
 
     # init splay tree for algorithm
     msgs_type_splay_tree: SplayTree = SplayTree()
@@ -131,6 +146,10 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
         if msgs_queue_to_write.full():
             send_queue_to_rpf(ofstream, msgs_queue_to_write)
 
+        if msgs_queue_to_write.full():
+            messagebox.showinfo("Process File - FATAL ERROR SYSTEM", 'QUEUE Is Full zero')
+            sys.exit(1)
+
         msgs_queue_to_write.put(QueueItem(msg_1553=exalt_record, file_position=cur_position))
 
         # allocate padding for current message in file
@@ -142,7 +161,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
         if last_msg_in_general.last_msg:
             # there is a message before current message then we can link between them
 
-            last_msg_in_general.last_msg.offset_nex_msg = exalt_record.offset_prev_msg = \
+            last_msg_in_general.last_msg.offset_next_msg = exalt_record.offset_prev_msg = \
                 calculate_offset(cur_position, last_msg_in_general.last_msg_pos)
 
         # update the current message to be the last one that we get
@@ -201,7 +220,20 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
 
     # END MSG TYPE PART --------------------------------------------------------------------------------------
 
-    # TODO: write the rest messages
+    last_msg_in_general.last_msg.offset_nex_msg = NO_POINTER
+
+    for last_adapter in last_from_adapters:
+        if last_adapter.last_form_adapter is not None:
+            last_adapter.last_form_adapter.offset_next_msg_same_adapter = NO_POINTER
+
+    fill_none_pointer(root=msgs_type_splay_tree.root)
+
+    send_queue_to_rpf(ofstream, msgs_queue_to_write)
+
+    if msgs_queue_to_write.full():
+        messagebox.showinfo("Process File", "FATAL ERROR SYSTEM")
+        sys.exit(1)
+
     return marker_table_list
 
 
@@ -226,9 +258,9 @@ def rpf_process(json_path, file_name: str, num_of_msgs: int, data_stream_list: l
         header_output_file: Header_RPF = Header_RPF(num_of_msgs, time_tag)
         lst_adapters_in_system: System_configuration = System_configuration(data_stream_list)
         marker_tables: List[Union[Message_Index_Table,
-                            First_Msg_Of_Type_Table,
-                            First_Msg_From_Adapter_Table,
-                            Counts_Index_Table]] = \
+                                  First_Msg_Of_Type_Table,
+                                  First_Msg_From_Adapter_Table,
+                                  Counts_Index_Table]] = \
             list(init_tables(time_tag, len(data_stream_list)))
 
         bytes_to_seek = header_output_file.get_size() + lst_adapters_in_system.get_size() + TRIGGER_LIST_SIZE + sum(
@@ -249,7 +281,9 @@ def rpf_process(json_path, file_name: str, num_of_msgs: int, data_stream_list: l
         output_stream.write(header_output_file.to_pack())
         output_stream.write(lst_adapters_in_system.pack())
         output_stream.write(struct.pack("<i", NO_TRIGGER_LIST))
-        output_stream.write(sum([marker_table.pack() for marker_table in marker_tables]))
+
+        for marker_table in marker_tables:
+            output_stream.write(marker_table.pack())
 
     # ----------------------------------------------------------------------------------------------
 
