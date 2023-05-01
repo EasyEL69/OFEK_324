@@ -5,7 +5,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from src.parsing_ch10.parser_1553 import parser_c10, parser_json
 # from src.Exalt_File.Make_RPF import rpf_process
-from src.Exalt_File.RPF import rpf_process
+from src.Exalt_File.RPF_output_file import rpf_process
 
 
 class UI:

@@ -59,7 +59,9 @@ class Message:
 
     @property
     def has_all_next_fill(self) -> bool:
-        return self.offset_next_msg and self.offset_next_msg_same_adapter and self.offset_next_msg_type
+        return (self.offset_next_msg is not None) and\
+               (self.offset_next_msg_same_adapter is not None) and \
+               (self.offset_next_msg_type is not None)
 
     def pack(self) -> bytes:
         return s.pack(self.MESSAGE_FORMAT,

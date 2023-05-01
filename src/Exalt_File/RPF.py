@@ -31,7 +31,7 @@ COUNT_INDEX_TABLE = 3
 # --------------------------------------
 TRIGGER_LIST_SIZE = struct.calcsize("<i")
 # --------------------------------------
-QUEUE_MAX_SIZE = 100
+QUEUE_MAX_SIZE = 150
 
 
 # --------------------------------------
@@ -220,7 +220,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
 
     # END MSG TYPE PART --------------------------------------------------------------------------------------
 
-    last_msg_in_general.last_msg.offset_nex_msg = NO_POINTER
+    last_msg_in_general.last_msg.offset_next_msg = NO_POINTER
 
     for last_adapter in last_from_adapters:
         if last_adapter.last_form_adapter is not None:
@@ -230,8 +230,8 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
 
     send_queue_to_rpf(ofstream, msgs_queue_to_write)
 
-    if msgs_queue_to_write.full():
-        messagebox.showinfo("Process File", "FATAL ERROR SYSTEM")
+    if not msgs_queue_to_write.empty():
+        messagebox.showinfo("Process File", "Queue Not Empty")
         sys.exit(1)
 
     return marker_table_list
