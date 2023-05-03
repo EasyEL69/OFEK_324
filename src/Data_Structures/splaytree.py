@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Node_data_elements:
+class NodeDataElements:
     """Class for keeping track of an item in inventory."""
     data_1553: Optional[Msg_1553] = None
     file_position: Optional[int] = None
@@ -12,7 +12,7 @@ class Node_data_elements:
 
 class Node:
     def __init__(self, data, key):
-        self.data: Node_data_elements = data  # (Msg_1553, file_position)
+        self.data: NodeDataElements = data  # (Msg_1553, file_position)
         self.key: any = key
         self.parent: Optional[Node] = None
         self.left: Optional[Node] = None

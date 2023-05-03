@@ -8,7 +8,7 @@ from typing import Tuple, Optional, List, BinaryIO, Union
 
 import ijson
 
-from src.Data_Structures.splaytree import SplayTree, Node, Node_data_elements
+from src.Data_Structures.splaytree import SplayTree, Node, NodeDataElements
 from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
 from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
 from src.Exalt_File.Markers_Tables.counts_Index_table import Counts_Index_Table
@@ -204,13 +204,13 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
                 add_entry(First_Message_Of_Type_Entry(cur_position, exalt_record.cmd_word_1))
 
             # insert message to tree
-            msgs_type_splay_tree.insert(Node_data_elements(data_1553=exalt_record, file_position=cur_position),
+            msgs_type_splay_tree.insert(NodeDataElements(data_1553=exalt_record, file_position=cur_position),
                                         key=exalt_record.cmd_word_1)
 
         # message type is already in tree, then it splayed up, and now we will extract the data and packing it
         else:
-            last_msg_type_node_data: Node_data_elements = msgs_type_splay_tree.root.data
-            msgs_type_splay_tree.root.data = Node_data_elements(data_1553=exalt_record, file_position=cur_position)
+            last_msg_type_node_data: NodeDataElements = msgs_type_splay_tree.root.data
+            msgs_type_splay_tree.root.data = NodeDataElements(data_1553=exalt_record, file_position=cur_position)
 
             # linking offset between 2 messages
 

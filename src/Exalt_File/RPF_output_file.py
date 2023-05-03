@@ -8,7 +8,7 @@ from typing import Tuple, Optional, List, BinaryIO, Union, Final
 
 import ijson
 
-from src.Data_Structures.splaytree import SplayTree, Node, Node_data_elements
+from src.Data_Structures.splaytree import SplayTree, Node, NodeDataElements
 from src.Exalt_File.Markers_Tables.Entries.first_message_from_adapter_entry import First_Message_From_Adapter_Entry
 from src.Exalt_File.Markers_Tables.Entries.first_message_of_type_entry import First_Message_Of_Type_Entry
 from src.Exalt_File.Markers_Tables.counts_Index_table import Counts_Index_Table
@@ -25,6 +25,7 @@ from src.Exalt_File.sys_config import System_configuration
 # --------------------------------------
 FILE_START_POSITION = 0
 NO_TRIGGER_LIST = NO_GAP_LIST = NO_MARK_LIST = NO_POINTER = 0
+SEEK_CUR = 1
 # --------------------------------------
 
 # Marker tables index list
@@ -43,6 +44,8 @@ TRIGGER_LIST_SIZE = struct.calcsize("<i")
 # Set queue buffer max size for writing and holding messages
 # --------------------------------------
 QUEUE_MAX_SIZE = 150
+
+
 # --------------------------------------
 
 
@@ -93,6 +96,12 @@ def create_exalt_msg(record: dict) -> Msg_1553:
 
 def init_tables(time_tag: int, num_adapters: int) -> \
         Tuple[Message_Index_Table, First_Msg_Of_Type_Table, First_Msg_From_Adapter_Table, Counts_Index_Table]:
+    """
+    @param time_tag: current time tag of file
+    @param num_adapters: number of adapters in JSON file
+    @return: Tuple[Message_Index_Table, First_Msg_Of_Type_Table, First_Msg_From_Adapter_Table, Counts_Index_Table]:
+    @note: function will initialize the 4 marker tables that RPF require
+    """
     return \
         Message_Index_Table(time_tag), \
         First_Msg_Of_Type_Table(time_tag, 2 ^ 16), \
@@ -143,8 +152,8 @@ def send_queue_to_rpf(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem
     ofstream.seek(saved_position)
 
 
-def insert_msg_to_queue(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem]],
-                        current_msg: Optional[Msg_1553], current_position: int) -> None:
+def buffered_message_write(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueItem]],
+                           current_msg: Optional[Msg_1553], current_position: int) -> None:
     """
     @param ofstream: output_file pointer in order to fill 1553 messages to RPF file
     @param queue_buffer: queue of 1553 messages to be writen to an output file
@@ -161,7 +170,7 @@ def insert_msg_to_queue(ofstream: BinaryIO, queue_buffer: Queue[Optional[QueueIt
         send_queue_to_rpf(ofstream, queue_buffer)
 
     # if queue is still full system cannot handel the massive data
-    # file cannot be converted to rpf, then exist from system
+    # file cannot be converted to rpf, then exit from system
     if queue_buffer.full():
         messagebox.showinfo("Process File - FATAL ERROR SYSTEM", 'Queue Overflow')
         sys.exit(1)
@@ -197,7 +206,7 @@ def handling_last_message(last_msg: LastMsg, current_msg: Optional[Msg_1553], cu
     """
     @param last_msg: last 1553 message system has read before
     @param current_msg: current 1553 message system read
-    @param current_position: current file position
+    @param current_position: current output file position
     @return: None
     @note: function will update last data param to keep tracking the order
     """
@@ -221,12 +230,12 @@ def handling_last_message(last_msg: LastMsg, current_msg: Optional[Msg_1553], cu
 def handling_last_from_adapter_message(last_from_adapters: List[AdaptersElement],
                                        current_msg: Optional[Msg_1553],
                                        current_position: int,
-                                       first_form_adapter_table: First_Msg_From_Adapter_Table) -> None:
+                                       first_from_adapter_table: First_Msg_From_Adapter_Table) -> None:
     """
     @param last_from_adapters: list of maximum adapters that can be in input file, contains 1553 msg and file position
     @param current_msg: current 1553 message system read from input file
-    @param current_position: current file position
-    @param first_form_adapter_table: marker table that contains all first messages from adapter entries
+    @param current_position: current file output position
+    @param first_from_adapter_table: marker table that contains all first messages from adapter entries
     @return: None
     @note: function will update file pointers between two messages, message from last adapter and current message
            also, update marker table entries
@@ -235,21 +244,21 @@ def handling_last_from_adapter_message(last_from_adapters: List[AdaptersElement]
     adapter_id: Final[int] = current_msg.adapter_id
 
     # check if this message is the first from any adapter in the list
-    if not last_from_adapters[adapter_id].message:
+    if last_from_adapters[adapter_id].message:
 
-        # ---- YES! first message from adapter --------
-        # we will add this file position to the first message from adapter table
-        first_form_adapter_table.add_entry(First_Message_From_Adapter_Entry(current_position, adapter_id))
-
-        # first message from this adapter that system get, previous message does not exist
-        current_msg.offset_prev_msg_same_adapter = NO_POINTER
-
-    else:
         # we have a last message from this adapter
         # we are going to link it to current message
         last_from_adapters[adapter_id].message.offset_next_msg_same_adapter = \
             current_msg.offset_prev_msg_same_adapter = \
             calculate_offset(current_position, last_from_adapters[adapter_id].file_position)
+
+    else:
+        # ---- YES! first message from adapter --------
+        # we will add this file position to the first message from adapter table
+        first_from_adapter_table.add_entry(First_Message_From_Adapter_Entry(current_position, adapter_id))
+
+        # first message from this adapter that system get, previous message does not exist
+        current_msg.offset_prev_msg_same_adapter = NO_POINTER
 
     # update the last message from this adapter and his file position
     last_from_adapters[current_msg.adapter_id].message = current_msg
@@ -261,11 +270,11 @@ def handling_file_message_type(msgs_type_splay_tree: SplayTree, current_msg: Opt
     """
     @param msgs_type_splay_tree: a splay tree of all message type we get from input file
     @param current_msg: current 1553 message system read from input file
-    @param current_position: current file position
+    @param current_position: current output file position
     @param first_message_type_table: marker table that contains all first messages from message type entries
     @return: None
     @note: function will update file pointers between two messages with same type,
-           message from last adapter and current message.
+           message from last message type and current message type.
            Also, update marker table entries and update the message type splay tree
     """
 
@@ -279,8 +288,8 @@ def handling_file_message_type(msgs_type_splay_tree: SplayTree, current_msg: Opt
         first_message_type_table.add_entry(First_Message_Of_Type_Entry(current_position, current_msg.cmd_word_1))
 
         # insert message to tree
-        msgs_type_splay_tree.insert(Node_data_elements(data_1553=current_msg,
-                                                       file_position=current_position),
+        msgs_type_splay_tree.insert(NodeDataElements(data_1553=current_msg,
+                                                     file_position=current_position),
                                     key=current_msg.cmd_word_1)
 
         # first message type that system get, previous message does not exist
@@ -288,8 +297,8 @@ def handling_file_message_type(msgs_type_splay_tree: SplayTree, current_msg: Opt
 
     # message type is already in tree, then it splayed up, and now we will extract the data and packing it
     else:
-        root_node_data: Node_data_elements = msgs_type_splay_tree.root.data
-        msgs_type_splay_tree.root.data = Node_data_elements(data_1553=current_msg, file_position=current_position)
+        root_node_data: NodeDataElements = msgs_type_splay_tree.root.data
+        msgs_type_splay_tree.root.data = NodeDataElements(data_1553=current_msg, file_position=current_position)
 
         # linking offset between 2 messages
         calculated_offset = calculate_offset(current_position, root_node_data.file_position)
@@ -360,7 +369,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
         exalt_record: Msg_1553 = create_exalt_msg(record)
 
         # insert message to queue
-        insert_msg_to_queue(ofstream, msgs_queue_to_write, exalt_record, cur_position)
+        buffered_message_write(ofstream, msgs_queue_to_write, exalt_record, cur_position)
 
         # allocate padding for current message in file
         ofstream.seek(exalt_record.get_size(), 1)
@@ -372,9 +381,7 @@ def rpf_algorithm(json_stream: BinaryIO, ofstream: BinaryIO, marker_table_list, 
         # ----------------------------------------------------------------------------------------
 
         # ADAPTER PART ------------------------------------------------------------------------------------------
-        handling_last_from_adapter_message(last_from_adapters,
-                                           exalt_record,
-                                           cur_position,
+        handling_last_from_adapter_message(last_from_adapters, exalt_record, cur_position,
                                            marker_table_list[FIRST_FROM_ADAPTER_TABLE])
         # END ADAPTER PART --------------------------------------------------------------------------------------
 
@@ -429,7 +436,7 @@ def rpf_process(json_path, file_name: str, num_of_msgs: int, data_stream_list: l
                                   First_Msg_Of_Type_Table,
                                   First_Msg_From_Adapter_Table,
                                   Counts_Index_Table]] = \
-            list(init_tables(time_tag, len(data_stream_list)))
+                                  list(init_tables(time_tag, len(data_stream_list)))
 
         # ---------------------------------------------------------------------------------------
 
