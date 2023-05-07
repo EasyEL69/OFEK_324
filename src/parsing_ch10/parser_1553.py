@@ -4,7 +4,6 @@ import pathlib
 import sys
 from tkinter import messagebox
 from typing import Tuple
-
 import ijson
 
 try:
@@ -21,11 +20,21 @@ def parser_json(json_file_path: str) -> Tuple[int, list[int]]:
     num_of_msgs = 0
     adapters: list[int] = []
 
-    with open(json_file_path, 'rb') as json_stream:
-        for record in ijson.items(json_stream, "item"):
-            num_of_msgs += 1
-            add_adapter(adapters, int(record['HEADER_CH10']['ADAPTER_ID'], 16))
+    try:
+        with open(json_file_path, 'rb') as json_stream:
+            for record in ijson.items(json_stream, "item"):
+                try:
+                    num_of_msgs += 1
+                    add_adapter(adapters, int(record['HEADER_CH10']['ADAPTER_ID'], 16))
+                except KeyError:
+                    messagebox.showinfo("Process File - JSON KEYS INVALID", f"Json file is not in correct format")
+                    exit(1)
 
+    except FileNotFoundError:
+        messagebox.showinfo("Process File - open file status", f"Error opening data file: {json_file_path}")
+        exit(1)
+
+    messagebox.showinfo("Process File - Finish Parser", f"done parsing json file")
     return num_of_msgs, adapters
 
 
@@ -56,6 +65,8 @@ def parser_c10(ch10_file_path: str) -> Tuple[int, list[int]]:
         sys.exit(1)
 
     num_msgs, adapters = parser_1553(pkt_io, decode1553, json_output_file_path)
+
+    messagebox.showinfo("Process File - Finish Parser", f"output file in:\n{json_output_file_path}")
 
     return num_msgs, adapters
 
