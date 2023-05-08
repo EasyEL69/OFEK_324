@@ -41,63 +41,113 @@ class SplayTree:
         # key is founded
         return root
 
+    # zag(x)
     def left_rotate(self, x: Node):
+        # x : stand for parent
+        # y : stand for the son we checked
+
+        # y point to x right son
         y = x.right
+
+        # point to parent.right_son to son.left_son to set point pointers right
         x.right = y.left
+
+        # if son.left_son is not none it can point back
         if y.left is not None:
             y.left.parent = x
 
+        # the new root subtree point to his grandparent and will be the root subtree
         y.parent = x.parent
+
+        # if grandparent is none, meaning that y is going to be the root itself
         if x.parent is None:
             self.root = y
+
+        # over-wise, check if parent is a left son or right in order to set grandparent pointer to his "new" son
         elif x == x.parent.left:
             x.parent.left = y
         else:
             x.parent.right = y
+
+        # rotate left son and his parent: son will point to his parent.
+        # parent will point back to his son
         y.left = x
         x.parent = y
 
         # rotate right at node x
 
+    # zig(x)
     def right_rotate(self, x: Node):
+        # x : stand for parent
+        # y : stand for the son we checked
+
+        # y point to x left son
         y = x.left
+
+        # point to parent.left_son to son.right_son to set point pointers right
         x.left = y.right
+
+        # if son.right_son is not none it can point back
         if y.right is not None:
             y.right.parent = x
 
+        # the new root subtree point to his grandparent and will be the root subtree
         y.parent = x.parent
+
+        # if grandparent is none, meaning that y is going to be the root itself
         if x.parent is None:
             self.root = y
+
+        # over-wise, check if parent is a right son or left in order to set grandparent pointer to his "new" son
         elif x == x.parent.right:
             x.parent.right = y
         else:
             x.parent.left = y
 
+        # rotate right son and his parent: son will point to his parent.
+        # parent will point back to his son
         y.right = x
         x.parent = y
 
     # Splaying operation, Moves x to the root of the tree
     def splay_node(self, x: Node):
+        # while x is not the root of tree...
         while x.parent is not None:
+            # checks that x parent is the root
             if x.parent.parent is None:
+                # checks for right rotate if x is left son (zig(parent))
                 if x == x.parent.left:
                     # zig rotation
                     self.right_rotate(x.parent)
+
+                # checks for left rotate if x is left son (zag(parent))
                 else:
                     # zag rotation
                     self.left_rotate(x.parent)
+
+            # checks if x is a left son and his parent is a left son also. needs to right rotate twice!
+            # zig - zig: zig(x.grandparent) then zig(x.parent)
             elif x == x.parent.left and x.parent == x.parent.parent.left:
                 # zig-zig rotation
                 self.right_rotate(x.parent.parent)
                 self.right_rotate(x.parent)
+
+            # checks if x is a right son and his parent is a right son also. needs to left rotate twice!
+            # zag - zag: zag(x.grandparent) then zag(x.parent)
             elif x == x.parent.right and x.parent == x.parent.parent.right:
                 # zag-zag rotation
                 self.left_rotate(x.parent.parent)
                 self.left_rotate(x.parent)
+
+            # checks if x is a right son and his parent is a left son.
+            # zig - zag: zag(x.parent) then zig(x.parent)
             elif x == x.parent.right and x.parent == x.parent.parent.left:
                 # zig-zag rotation
                 self.left_rotate(x.parent)
                 self.right_rotate(x.parent)
+
+            # then, x is a left son and his parent is a right son.
+            # zag - zig: zig(x.parent) then zag(x.parent)
             else:
                 # zag-zig rotation
                 self.right_rotate(x.parent)
