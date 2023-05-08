@@ -1,6 +1,6 @@
 import functools
 import struct as s
-from typing import Optional, Final, BinaryIO
+from typing import Optional, Final
 
 BASE_HEX: Final[int] = 16
 DEFAULT_VALUE: Final[int] = 0x00000000  # 0xFFFFFFFF
@@ -142,12 +142,3 @@ class Msg_1553(Message):
 
     def is_write_ready(self) -> bool:
         return super().has_all_next_fill
-
-    def write_to_output_file(self, ofstream: BinaryIO, file_position: int):
-        if self.is_write_ready():
-            temp_pos = ofstream.tell()
-
-            ofstream.seek(file_position)
-            ofstream.write(self.pack())
-
-            ofstream.seek(temp_pos)
