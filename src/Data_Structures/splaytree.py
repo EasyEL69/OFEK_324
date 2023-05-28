@@ -140,16 +140,16 @@ class SplayTree:
                 self.left_rotate(x.parent)
 
             # checks if x is a right son and his parent is a left son.
-            # zig - zag: zag(x.parent) then zig(x.parent)
+            # zag - zig: zag(x.parent) then zig(x.parent)
             elif x == x.parent.right and x.parent == x.parent.parent.left:
-                # zig-zag rotation
+                # zag-zig rotation
                 self.left_rotate(x.parent)
                 self.right_rotate(x.parent)
 
             # then, x is a left son and his parent is a right son.
-            # zag - zig: zig(x.parent) then zag(x.parent)
+            # zig - zag: zig(x.parent) then zag(x.parent)
             else:
-                # zag-zig rotation
+                # zig-zag rotation
                 self.right_rotate(x.parent)
                 self.left_rotate(x.parent)
 
